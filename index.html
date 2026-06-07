@@ -215,6 +215,13 @@
   .ttotal{background:var(--panel-b);border:1px solid var(--border);border-radius:var(--radius-ctl);padding:9px 13px;}
   .ttotal .t{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
   .ttotal .v{font-size:16px;font-weight:700;margin-top:3px;}
+  .refblock{margin-bottom:14px;}
+  .refcap{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;}
+  .refcap .sb-hint{display:inline;font-weight:600;text-transform:none;letter-spacing:0;margin:0;}
+  .refsub{font-size:12px;color:var(--muted);margin-top:3px;}
+  .refbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
+  .refbtn{background:var(--panel-b);border:1px solid var(--border);border-radius:var(--radius-ctl);padding:7px 12px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;}
+  .refbtn:hover{border-color:var(--acc);}
 
   /* Ranked bars */
   .rrow{margin:10px 0;}
@@ -535,6 +542,51 @@ function prodName(p){
 /* ---------- top-level data (populated in boot) ---------- */
 var pnl={}, bal={}, products=[], monthly=[], opex=[], capital=[], cashflow={};
 
+/* ---------- Reference price book (edit here to update prices) ----------
+   Each entry: set keywords (any-match, lowercase, tested against the product
+   name), kind, supplier price, end-user price. Matched onto products at boot. */
+var PRICE_BOOK = [
+  // PACKS
+  { label:"Ascended Heroes — Pack",     set:["ascended heroes","ascended"], kind:"pack",   supplier:265000,  endUser:280000  },
+  { label:"Pokémon 151 — Pack",          set:["151"],                        kind:"pack",   supplier:540000,  endUser:570000  },
+  { label:"Phantasmal Evolution — Pack", set:["phantasmal"],                 kind:"pack",   supplier:245000,  endUser:260000  },
+  { label:"Paldean Fates — Pack",        set:["paldean fates","paldean"],    kind:"pack",   supplier:375000,  endUser:390000  },
+  { label:"Journey Together — Pack",     set:["journey together","journey"], kind:"pack",   supplier:120000,  endUser:130000  },
+  { label:"Surging Sparks — Pack",       set:["surging sparks","surging"],   kind:"pack",   supplier:160000,  endUser:170000  },
+  { label:"Chaos Rising — Pack",         set:["chaos rising","chaos"],       kind:"pack",   supplier:155000,  endUser:165000  },
+  { label:"Mega Dream — Pack",           set:["mega dream"],                 kind:"pack",   supplier:150000,  endUser:160000  },
+  { label:"Ninja Spinner — Pack",        set:["ninja spinner"],              kind:"pack",   supplier:55000,   endUser:60000   },
+  // BUNDLES
+  { label:"Pokémon 151 — Bundle",        set:["151"],                        kind:"bundle", supplier:3870000, endUser:4000000 },
+  { label:"Prismatic Evolution — Bundle",set:["prismatic"],                  kind:"bundle", supplier:1850000, endUser:1900000 },
+  { label:"Phantasmal Evolution — Bundle",set:["phantasmal"],                kind:"bundle", supplier:1700000, endUser:1800000 },
+  { label:"Ascended Heroes — Bundle",    set:["ascended heroes","ascended"], kind:"bundle", supplier:1850000, endUser:2000000 },
+  // BOXES
+  { label:"Chaos Rising — Case",         set:["chaos rising","chaos"],       kind:"case",   supplier:31000000,endUser:34000000},
+  { label:"Prismatic Evolution — ETB",   set:["prismatic"],                  kind:"etb",    supplier:3750000, endUser:3850000 },
+  { label:"Prismatic Evolution — Costco",set:["prismatic"],                  kind:"costco", supplier:5600000, endUser:5700000 }
+];
+function productKind(p){
+  var hay=((prodName(p)||"")+" "+(p.type||"")+" "+(p.setName||"")).toLowerCase();
+  if(hay.indexOf("costco")>=0) return "costco";
+  if(hay.indexOf("case")>=0) return "case";
+  if(hay.indexOf("etb")>=0 || hay.indexOf("elite trainer")>=0) return "etb";
+  if(hay.indexOf("bundle")>=0) return "bundle";
+  return "pack";
+}
+function matchPriceBook(p){
+  var kind=productKind(p);
+  var hay=((prodName(p)||"")+" "+(p.type||"")+" "+(p.setName||"")).toLowerCase();
+  for(var i=0;i<PRICE_BOOK.length;i++){
+    var e=PRICE_BOOK[i];
+    if(e.kind!==kind) continue;
+    for(var j=0;j<e.set.length;j++){
+      if(hay.indexOf(String(e.set[j]).toLowerCase())>=0) return e;
+    }
+  }
+  return null;
+}
+
 /* ===================== TABS / NAV ===================== */
 const TABS = [
   ["overview","Overview","📊"],["modal","Modal","💰"],["sales","Sales","🧾"],["bydate","By Date","📅"],["charts","Charts","📈"],
@@ -758,6 +810,26 @@ function salesTotals(t){
     +'<div class="ttotal"><div class="t">Margin</div><div class="v num '+marginClass(t.margin)+'">'+pct(t.margin)+'</div></div>'
     +'</div>';
 }
+function refPriceCell(title,price,landed){
+  var profit=price-landed;
+  var margin=(price>0?((price-landed)/price*100):null);
+  var marginTxt=(landed>0)?('<span class="'+marginClass(margin)+'">'+pct(margin)+'</span>'):'—';
+  return '<div class="ttotal"><div class="t">'+esc(title)+'</div>'
+    +'<div class="v num">'+money(price)+'</div>'
+    +'<div class="refsub">+'+money(profit)+' / unit · '+marginTxt+'</div></div>';
+}
+function refPricingBlock(p){
+  var hasSup=(p.refSupplier!=null), hasEnd=(p.refEndUser!=null);
+  if(!hasSup && !hasEnd) return "";
+  var landed=+p.modalLanded||0;
+  var cells="";
+  if(hasSup) cells+=refPriceCell("Supplier price",+p.refSupplier,landed);
+  if(hasEnd) cells+=refPriceCell("End-user price",+p.refEndUser,landed);
+  return '<div class="refblock"><div class="refcap">Reference pricing'
+    +(p.refLabel?(' — '+esc(p.refLabel)):'')
+    +' <span class="sb-hint">vs landed cost '+money(landed)+'</span></div>'
+    +'<div class="ttotals">'+cells+'</div></div>';
+}
 function salesTotalsFromRows(rows){
   var units=0, revenue=0, gross=0;
   arr(rows).forEach(function(s){
@@ -839,7 +911,7 @@ function refreshSales(){
       +'<div class="pname">🎴 '+esc(nm)+' <span class="chev">▶</span></div>'
       +'<div class="pmeta">'+num(totals.units)+' sold · '+money(totals.revenue)+' rev · '
         +'<span class="'+marginClass(totals.margin)+'">'+pct(totals.margin)+'</span></div>'
-      +'<div class="detail">'+salesTotals(totals)+salesTable(p,rowFilterActive?rows:null)+'</div>'
+      +'<div class="detail">'+salesTotals(totals)+refPricingBlock(p)+salesTable(p,rowFilterActive?rows:null)+'</div>'
     +'</div>';
   }).join("");
 
@@ -1656,6 +1728,7 @@ function renderSandbox(){
      +'<div class="ctl-row" style="margin-bottom:10px;"><span class="ctl-lbl">Product</span>'
        +'<select class="dd" id="sbProduct">'+prodOpts+'</select></div>'
      +'<div id="sbBasis" class="sb-hint" style="margin-bottom:8px;"></div>'
+     +'<div id="sbRefBtns" class="refbtns"></div>'
      +'<div class="ctl-row"><span class="ctl-lbl">Sell price per unit</span>'
        +'<input class="inp" id="sbPriceN" type="number" inputmode="numeric" min="0" step="1000">'
        +'<input id="sbPriceR" type="range" min="0" step="1000">'
@@ -1674,7 +1747,15 @@ function renderSandbox(){
        +'<input id="sbTgtR" type="range" min="0" max="95" step="1">'
        +'<div class="sb-hint">Required sell price = landed cost ÷ (1 − margin).</div></div>'
      +'<div class="sb-out" id="sbTgtOut" style="grid-template-columns:repeat(2,1fr);"></div>'
-   +'</div>';
+   +'</div>'
+   +'<div id="sbUnmatched" class="sb-hint" style="margin-top:4px;"></div>';
+
+  // Verification surface: products with no PRICE_BOOK match.
+  var unmatched=products.filter(function(p){ return p.refSupplier==null && p.refEndUser==null; })
+    .map(function(p){ return prodName(p); });
+  if(unmatched.length){
+    el("sbUnmatched").innerHTML='No reference price matched: '+esc(unmatched.join(", "));
+  }
 
   // init defaults from first product
   function loadDefaults(){
@@ -1689,7 +1770,31 @@ function renderSandbox(){
     el("sbQtyN").value=defQty; el("sbQtyR").max=qtyMax; el("sbQtyR").value=defQty;
     el("sbBasis").innerHTML='Cost basis (landed): <b>'+money(landed)+'</b> / unit'
       +(p.retailPrice?(' · retail '+money(p.retailPrice)):'')
-      +(p.supplierPrice?(' · supplier '+money(p.supplierPrice)):'');
+      +(p.supplierPrice?(' · supplier '+money(p.supplierPrice)):'')
+      +((p.refSupplier!=null||p.refEndUser!=null)
+          ? ('<br>Reference:'
+              +(p.refSupplier!=null?(' Supplier '+money(p.refSupplier)):'')
+              +(p.refSupplier!=null&&p.refEndUser!=null?' ·':'')
+              +(p.refEndUser!=null?(' End-user '+money(p.refEndUser)):''))
+          : '');
+    refRefButtons();
+  }
+  // Build quick-fill reference buttons for the current product.
+  function refRefButtons(){
+    var p=sbProduct(), box=el("sbRefBtns"); if(!box) return;
+    var html="";
+    if(p.refSupplier!=null) html+='<button type="button" class="refbtn" data-refprice="'+(+p.refSupplier)+'">Use supplier price</button>';
+    if(p.refEndUser!=null)  html+='<button type="button" class="refbtn" data-refprice="'+(+p.refEndUser)+'">Use end-user price</button>';
+    box.innerHTML=html;
+    Array.prototype.forEach.call(box.querySelectorAll(".refbtn"),function(b){
+      b.addEventListener("click",function(){
+        var v=+b.getAttribute("data-refprice")||0;
+        sbState.price=v;
+        if(+el("sbPriceR").max < v) el("sbPriceR").max=v;
+        el("sbPriceN").value=v; el("sbPriceR").value=v;
+        recalc();
+      });
+    });
   }
   function recalc(){
     var p=sbProduct();
@@ -1855,6 +1960,12 @@ function renderFoot(){
 function boot(){
   pnl = D.pnl||{}; bal = D.balance||{};
   products = arr(D.products);
+  products.forEach(function(p){
+    var m=matchPriceBook(p);
+    p.refSupplier = m ? m.supplier : undefined;
+    p.refEndUser  = m ? m.endUser  : undefined;
+    p.refLabel    = m ? m.label    : undefined;
+  });
   monthly = arr(D.monthly);
   opex = arr(D.opex);
   capital = arr(D.capital);
