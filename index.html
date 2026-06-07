@@ -330,6 +330,57 @@
   .sres-stats .s b{color:var(--text);font-variant-numeric:tabular-nums;}
   .empty{color:var(--muted);font-size:13px;padding:22px 4px;text-align:center;}
 
+  /* ===== Expenses tab ===== */
+  .ex-bigout{font-size:30px;font-weight:800;line-height:1.05;margin-top:6px;}
+  @media(max-width:899px){ .ex-bigout{font-size:26px;} }
+  .ex-bigout .cur{font-size:18px;color:var(--muted);font-weight:700;margin-right:3px;}
+  .ex-cap{font-size:12.5px;color:var(--muted);margin-top:6px;}
+  /* stacked allocation bar */
+  .stackbar{display:flex;width:100%;height:30px;border-radius:9px;overflow:hidden;border:1px solid var(--border);background:var(--panel-b);margin:14px 0 18px;}
+  .stackseg{height:100%;min-width:2px;transition:width .5s ease;}
+  .alloc-list{display:flex;flex-direction:column;gap:11px;}
+  .alloc-row{display:flex;align-items:center;gap:11px;}
+  .alloc-dot{width:11px;height:11px;border-radius:3px;flex:0 0 auto;}
+  .alloc-main{flex:1;min-width:0;}
+  .alloc-top{display:flex;justify-content:space-between;gap:10px;font-size:13.5px;margin-bottom:5px;}
+  .alloc-top .an{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .alloc-top .av{font-weight:700;flex:0 0 auto;font-variant-numeric:tabular-nums;}
+  .alloc-track{height:9px;background:var(--panel-b);border:1px solid var(--border);border-radius:6px;overflow:hidden;}
+  .alloc-fill{height:100%;border-radius:6px;transition:width .5s ease;}
+  .alloc-pct{font-size:11.5px;color:var(--muted);font-weight:600;width:46px;text-align:right;flex:0 0 auto;font-variant-numeric:tabular-nums;}
+  /* reconciliation statement */
+  .recon{font-size:14px;}
+  .recon-grp{margin-bottom:6px;}
+  .recon-h{display:flex;justify-content:space-between;gap:10px;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);margin:14px 0 7px;}
+  .recon-h:first-child{margin-top:0;}
+  .recon-r{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);}
+  .recon-r .rl{color:var(--text);}
+  .recon-r .rl .op{color:var(--muted);font-weight:700;margin-right:6px;display:inline-block;width:12px;}
+  .recon-r .rr{font-weight:600;font-variant-numeric:tabular-nums;flex:0 0 auto;}
+  .recon-sub{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--border);margin-top:2px;font-weight:700;}
+  .recon-sub .rr{font-variant-numeric:tabular-nums;}
+  .recon-net{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:14px;padding:14px 16px;border-radius:var(--radius-ctl);background:rgba(52,211,153,.08);border:1px solid rgba(52,211,153,.28);}
+  .recon-net .nl{font-size:14px;font-weight:700;}
+  .recon-net .nv{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums;}
+  .recon-match{font-size:12.5px;color:var(--green);font-weight:600;margin-top:9px;display:flex;align-items:center;gap:6px;}
+  .recon-mismatch{font-size:12.5px;color:var(--amber);font-weight:600;margin-top:9px;}
+  /* opex expandable rows */
+  .opx{border-bottom:1px solid var(--border);padding:11px 0;cursor:pointer;}
+  .opx:last-child{border-bottom:none;}
+  .opx-head{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+  .opx-name{font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px;}
+  .opx-name .chev{font-size:10px;}
+  .opx-amt{font-weight:700;font-variant-numeric:tabular-nums;flex:0 0 auto;}
+  .opx-track{height:7px;background:var(--panel-b);border:1px solid var(--border);border-radius:5px;overflow:hidden;margin-top:7px;}
+  .opx-fill{height:100%;border-radius:5px;background:linear-gradient(135deg,var(--acc-a),var(--acc-b));transition:width .5s ease;}
+  .opx-tx{display:none;margin-top:11px;}
+  .opx.open .opx-tx{display:block;animation:fadein .2s ease;}
+  .opx.open .chev{transform:rotate(90deg);display:inline-block;}
+  /* ledger filter row */
+  .ledger-filter{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+  .ledger-filter .ctl-row{flex:1 1 200px;min-width:160px;}
+  .ledger-count{font-size:12px;color:var(--muted);margin-bottom:10px;}
+
   .foot{display:none;}
 
   /* ===== Mobile (<900px): hide sidebar, show sticky header + segmented nav ===== */
@@ -440,6 +491,7 @@
         <section id="sec-charts"></section>
         <section id="sec-performance"></section>
         <section id="sec-capital"></section>
+        <section id="sec-expenses"></section>
         <section id="sec-sandbox"></section>
         <section id="sec-audit"></section>
       </div>
@@ -478,12 +530,12 @@ function prodName(p){
 }
 
 /* ---------- top-level data (populated in boot) ---------- */
-var pnl={}, bal={}, products=[], monthly=[], opex=[], capital=[];
+var pnl={}, bal={}, products=[], monthly=[], opex=[], capital=[], cashflow={};
 
 /* ===================== TABS / NAV ===================== */
 const TABS = [
   ["overview","Overview","📊"],["modal","Modal","💰"],["sales","Sales","🧾"],["bydate","By Date","📅"],["charts","Charts","📈"],
-  ["performance","Performance","🏆"],["capital","Capital","🏦"],["sandbox","Sandbox","🎚️"],["audit","Audit","🔍"]
+  ["performance","Performance","🏆"],["capital","Capital","🏦"],["expenses","Expenses","💸"],["sandbox","Sandbox","🎚️"],["audit","Audit","🔍"]
 ];
 function buildTabs(){
   el("navDesktop").innerHTML = TABS.map(function(t,i){
@@ -1284,6 +1336,198 @@ function renderCapital(){
   });
 }
 
+/* ===================== EXPENSES ===================== */
+// Distinct color per allocation bucket. Matches design brief.
+var ALLOC_COLORS = {
+  "Inventory (supplier payments)":"var(--acc)",
+  "Shipping, legs & FX fees":"var(--acc-2)",
+  "Operating expenses":"var(--amber)",
+  "Capital returned to partners":"var(--green)",
+  "Loans / internal transfers":"var(--muted)"
+};
+function allocColor(bucket){ return ALLOC_COLORS[bucket] || "var(--muted)"; }
+
+var exLedgerState = { cat:"all", q:"" };
+
+function renderExpenses(){
+  var sec=el("sec-expenses");
+  var cf = cashflow || {};
+  var totalIn = +cf.totalIn||0, totalOut = +cf.totalOut||0, net = +cf.net||0;
+  var inflows = arr(cf.inflows), outflows = arr(cf.outflows);
+  var allocation = arr(cf.allocation);
+  var rows = arr(cf.outflowRows);
+
+  if(!totalIn && !totalOut && !rows.length){
+    sec.innerHTML='<div class="sec-title">Expenses</div>'
+      +'<div class="card"><div class="empty">No cashflow data yet.</div></div>';
+    return;
+  }
+
+  /* ---- (A) WHERE DID THE MONEY GO? ---- */
+  var allocSorted = allocation.slice().filter(function(a){ return Math.abs(+a.amount||0)>0; })
+    .sort(function(a,b){ return (Math.abs(+b.amount||0))-(Math.abs(+a.amount||0)); });
+  var allocTotal = 0; allocSorted.forEach(function(a){ allocTotal += Math.abs(+a.amount||0); });
+  var baseOut = totalOut>0 ? totalOut : (allocTotal||1);
+
+  var stack = allocSorted.map(function(a){
+    var amt=Math.abs(+a.amount||0); var w=(amt/(allocTotal||1))*100;
+    return '<div class="stackseg" style="width:'+w.toFixed(2)+'%;background:'+allocColor(a.bucket)+';" title="'+esc(a.bucket)+': '+esc(money(amt))+'"></div>';
+  }).join("") || '<div class="stackseg" style="width:100%;background:var(--panel-b);"></div>';
+
+  var allocRows = allocSorted.map(function(a){
+    var amt=Math.abs(+a.amount||0);
+    var p=(amt/baseOut)*100;
+    var wbar=(amt/(allocSorted.length?Math.abs(+allocSorted[0].amount||0)||1:1))*100;
+    return '<div class="alloc-row">'
+      +'<span class="alloc-dot" style="background:'+allocColor(a.bucket)+';"></span>'
+      +'<div class="alloc-main">'
+        +'<div class="alloc-top"><span class="an">'+esc(a.bucket)+'</span><span class="av num">'+money(amt)+'</span></div>'
+        +'<div class="alloc-track"><div class="alloc-fill" style="width:'+Math.max(2,wbar).toFixed(1)+'%;background:'+allocColor(a.bucket)+';"></div></div>'
+      +'</div>'
+      +'<span class="alloc-pct">'+pct(p)+'</span>'
+    +'</div>';
+  }).join("") || '<div class="empty">No outflow breakdown.</div>';
+
+  var sectionA =
+    '<div class="sec-title">Where did the money go?</div>'
+   +'<div class="card">'
+     +'<div class="kpi-label" style="font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.7px;text-transform:uppercase;">Total money out</div>'
+     +'<div class="ex-bigout num neg"><span class="cur">−</span>'+money(totalOut)+'</div>'
+     +'<div class="ex-cap">Every Rupiah that left Pokehit, grouped by where it went.</div>'
+     +'<div class="stackbar">'+stack+'</div>'
+     +'<div class="alloc-list">'+allocRows+'</div>'
+   +'</div>';
+
+  /* ---- (B) HOW DO I HAVE Rp X CASH? — reconciliation ---- */
+  var inSorted = inflows.slice().sort(function(a,b){ return (+b.amount||0)-(+a.amount||0); });
+  var outSorted = outflows.slice().sort(function(a,b){ return (Math.abs(+b.amount||0))-(Math.abs(+a.amount||0)); });
+  var inRows = inSorted.map(function(r){
+    var c = r.count!=null ? ' <span style="color:var(--muted);font-weight:400;">('+num(r.count)+')</span>' : '';
+    return '<div class="recon-r"><span class="rl">'+esc(r.category||"—")+c+'</span>'
+      +'<span class="rr pos">'+money(Math.abs(+r.amount||0))+'</span></div>';
+  }).join("") || '<div class="recon-r"><span class="rl">No inflows</span><span class="rr">—</span></div>';
+  var outRows = outSorted.map(function(r){
+    var c = r.count!=null ? ' <span style="color:var(--muted);font-weight:400;">('+num(r.count)+')</span>' : '';
+    return '<div class="recon-r"><span class="rl"><span class="op">−</span>'+esc(r.category||"—")+c+'</span>'
+      +'<span class="rr neg">'+money(Math.abs(+r.amount||0))+'</span></div>';
+  }).join("") || '<div class="recon-r"><span class="rl">No outflows</span><span class="rr">—</span></div>';
+
+  var cashBal = (bal && bal.cash!=null) ? +bal.cash : net;
+  var matches = Math.abs(net - cashBal) < 1;
+  var matchLine = matches
+    ? '<div class="recon-match">✓ This matches your Cash balance.</div>'
+    : '<div class="recon-mismatch">⚠ Computed net ('+money(net)+') differs from Cash balance ('+money(cashBal)+').</div>';
+
+  var sectionB =
+    '<div class="sec-title">How do I have '+money(cashBal)+' cash?</div>'
+   +'<div class="card recon">'
+     +'<div class="recon-h"><span>Money in</span><span></span></div>'
+     +inRows
+     +'<div class="recon-sub"><span>Total in</span><span class="rr pos">'+money(totalIn)+'</span></div>'
+     +'<div class="recon-h"><span>Money out</span><span></span></div>'
+     +outRows
+     +'<div class="recon-sub"><span>Total out</span><span class="rr neg">−'+money(totalOut)+'</span></div>'
+     +'<div class="recon-net"><span class="nl">Net cash</span><span class="nv '+(net>=0?'pos':'neg')+'">'+money(net)+'</span></div>'
+     +matchLine
+   +'</div>';
+
+  /* ---- (C) OPERATING EXPENSES detail ---- */
+  var opSorted = arr(opex).slice().filter(function(o){ return Math.abs(+o.amount||0)>0; })
+    .sort(function(a,b){ return (Math.abs(+b.amount||0))-(Math.abs(+a.amount||0)); });
+  var opMax = 1; opSorted.forEach(function(o){ opMax=Math.max(opMax,Math.abs(+o.amount||0)); });
+  var opHtml = opSorted.map(function(o){
+    var amt=Math.abs(+o.amount||0);
+    var w=(amt/opMax)*100;
+    var cat=o.category||"";
+    var txRows = rows.filter(function(r){ return (r.category||"")===cat; });
+    var txBody = txRows.map(function(r){
+      return '<tr><td>'+esc(r.date||"—")+'</td>'
+        +'<td>'+esc(r.counterparty||"—")+'</td>'
+        +'<td class="num">'+money(Math.abs(+r.amount||0))+'</td>'
+        +'<td>'+esc(r.desc||"—")+'</td></tr>';
+    }).join("");
+    var tx = txRows.length
+      ? '<div class="tscroll"><table class="compact"><thead><tr><th>Date</th><th>Counterparty</th><th>Amount</th><th>Description</th></tr></thead><tbody>'+txBody+'</tbody></table></div>'
+      : '<div class="empty">No matching transactions.</div>';
+    return '<div class="opx" data-opx="1">'
+      +'<div class="opx-head"><span class="opx-name"><span class="chev">▶</span>'+esc(cat||"—")+'</span>'
+        +'<span class="opx-amt num">'+money(amt)+'</span></div>'
+      +'<div class="opx-track"><div class="opx-fill" style="width:'+Math.max(2,w).toFixed(1)+'%;"></div></div>'
+      +'<div class="opx-tx">'+tx+'</div>'
+    +'</div>';
+  }).join("") || '<div class="empty">No operating expenses.</div>';
+
+  var sectionC =
+    '<div class="sec-title">Operating expenses — tap to see transactions</div>'
+   +'<div class="card">'+opHtml+'</div>';
+
+  /* ---- (D) FULL OUTFLOW LEDGER ---- */
+  var cats={};
+  rows.forEach(function(r){ if(r.category) cats[r.category]=true; });
+  var catOpts='<option value="all">All categories</option>'+Object.keys(cats).sort().map(function(c){
+    return '<option value="'+esc(c)+'">'+esc(c)+'</option>';
+  }).join("");
+
+  var sectionD =
+    '<div class="sec-title">Full outflow ledger</div>'
+   +'<div class="card">'
+     +'<div class="ledger-filter">'
+       +'<div class="ctl-row"><span class="ctl-lbl">Category</span>'
+         +'<select class="dd" id="exLedgerCat">'+catOpts+'</select></div>'
+       +'<div class="ctl-row grow"><span class="ctl-lbl">Search</span>'
+         +'<input class="inp" id="exLedgerSearch" type="search" inputmode="search" autocomplete="off" placeholder="counterparty, description…"></div>'
+     +'</div>'
+     +'<div class="ledger-count" id="exLedgerCount"></div>'
+     +'<div id="exLedgerTable"></div>'
+   +'</div>';
+
+  sec.innerHTML = sectionA + sectionB + sectionC + sectionD;
+
+  // wire (C) expand
+  Array.prototype.forEach.call(sec.querySelectorAll(".opx"),function(o){
+    o.addEventListener("click",function(){ o.classList.toggle("open"); });
+  });
+
+  // wire (D) filter + search
+  var catSel=el("exLedgerCat"), srch=el("exLedgerSearch");
+  if(catSel){ catSel.value=exLedgerState.cat; catSel.addEventListener("change",function(e){ exLedgerState.cat=e.target.value; refreshExLedger(); }); }
+  if(srch){ srch.value=exLedgerState.q; srch.addEventListener("input",function(e){ exLedgerState.q=e.target.value; refreshExLedger(); }); }
+  refreshExLedger();
+}
+function refreshExLedger(){
+  var tbl=el("exLedgerTable"); if(!tbl) return;
+  var cf = cashflow || {};
+  // Global search box should also filter the ledger.
+  var globalQ="";
+  var gs=el("searchD")||el("searchM"); if(gs) globalQ=(gs.value||"").trim().toLowerCase();
+  var localQ=(exLedgerState.q||"").trim().toLowerCase();
+  var rows=arr(cf.outflowRows).slice();
+  // newest first
+  rows.sort(function(a,b){ return (a.date<b.date?1:a.date>b.date?-1:0); });
+  rows=rows.filter(function(r){
+    if(exLedgerState.cat!=="all" && (r.category||"")!==exLedgerState.cat) return false;
+    function hit(q){
+      if(!q) return true;
+      var hay=((r.category||"")+" "+(r.counterparty||"")+" "+(r.desc||"")+" "+(r.date||"")).toLowerCase();
+      return hay.indexOf(q)>=0;
+    }
+    return hit(localQ) && hit(globalQ);
+  });
+  var cnt=el("exLedgerCount");
+  if(cnt) cnt.textContent = num(rows.length)+(rows.length===1?" transaction":" transactions");
+  if(!rows.length){ tbl.innerHTML='<div class="empty">No transactions match.</div>'; return; }
+  var body=rows.map(function(r){
+    return '<tr><td>'+esc(r.date||"—")+'</td>'
+      +'<td>'+esc(r.category||"—")+'</td>'
+      +'<td>'+esc(r.counterparty||"—")+'</td>'
+      +'<td class="num neg">'+money(Math.abs(+r.amount||0))+'</td>'
+      +'<td>'+esc(r.desc||"—")+'</td></tr>';
+  }).join("");
+  tbl.innerHTML='<div class="tscroll"><table><thead><tr>'
+    +'<th>Date</th><th>Category</th><th>Counterparty</th><th>Amount</th><th>Description</th>'
+    +'</tr></thead><tbody>'+body+'</tbody></table></div>';
+}
+
 /* ===================== SANDBOX ===================== */
 var sbState = { product:null, price:0, qty:0, targetMargin:30 };
 
@@ -1503,6 +1747,7 @@ function boot(){
   monthly = arr(D.monthly);
   opex = arr(D.opex);
   capital = arr(D.capital);
+  cashflow = D.cashflow||{};
 
   var gate=el("gate"), app=el("app");
   if(gate) gate.style.display="none";
@@ -1516,6 +1761,7 @@ function boot(){
   renderCharts();
   renderPerformance();
   renderCapital();
+  renderExpenses();
   renderSandbox();
   renderAudit();
   renderFoot();
@@ -1526,6 +1772,7 @@ function boot(){
       var v=e.target.value;
       ["searchD","searchM"].forEach(function(o){ var m=el(o); if(m && m!==n) m.value=v; });
       renderSearch(v);
+      if(el("exLedgerTable")) refreshExLedger();
     });
   });
 }
