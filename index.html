@@ -432,6 +432,8 @@
     .chart-controls{gap:12px;}
     .ctl-row.grow{flex-basis:100%;}
     .sres-grid{grid-template-columns:1fr;}
+    select.dd, input.inp{min-height:44px;}
+    .refbtn{min-height:44px;}
   }
   @media(max-width:380px){
     .kpis{grid-template-columns:1fr;}
@@ -566,12 +568,20 @@ var PRICE_BOOK = [
   { label:"Prismatic Evolution — ETB",   set:["prismatic"],                  kind:"etb",    supplier:3750000, endUser:3850000 },
   { label:"Prismatic Evolution — Costco",set:["prismatic"],                  kind:"costco", supplier:5600000, endUser:5700000 }
 ];
+function hasWord(hay,term){
+  // Whole-word/token match so generic substrings (e.g. "case" in "showcase",
+  // or a SKU containing "151") can't cause a false price match.
+  term=String(term||"").toLowerCase().trim();
+  if(!term) return false;
+  var safe=term.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
+  return new RegExp("\\b"+safe+"\\b").test(hay);
+}
 function productKind(p){
   var hay=((prodName(p)||"")+" "+(p.type||"")+" "+(p.setName||"")).toLowerCase();
-  if(hay.indexOf("costco")>=0) return "costco";
-  if(hay.indexOf("case")>=0) return "case";
-  if(hay.indexOf("etb")>=0 || hay.indexOf("elite trainer")>=0) return "etb";
-  if(hay.indexOf("bundle")>=0) return "bundle";
+  if(hasWord(hay,"costco")) return "costco";
+  if(hasWord(hay,"case")) return "case";
+  if(hasWord(hay,"etb") || hasWord(hay,"elite trainer")) return "etb";
+  if(hasWord(hay,"bundle")) return "bundle";
   return "pack";
 }
 function matchPriceBook(p){
@@ -581,7 +591,7 @@ function matchPriceBook(p){
     var e=PRICE_BOOK[i];
     if(e.kind!==kind) continue;
     for(var j=0;j<e.set.length;j++){
-      if(hay.indexOf(String(e.set[j]).toLowerCase())>=0) return e;
+      if(hasWord(hay,e.set[j])) return e;
     }
   }
   return null;
@@ -813,10 +823,11 @@ function salesTotals(t){
 function refPriceCell(title,price,landed){
   var profit=price-landed;
   var margin=(price>0?((price-landed)/price*100):null);
-  var marginTxt=(landed>0)?('<span class="'+marginClass(margin)+'">'+pct(margin)+'</span>'):'—';
+  var marginTxt=(margin!=null)?('<span class="'+marginClass(margin)+'">'+pct(margin)+'</span>'):'—';
+  var profCls=(profit>=0?'pos':'neg');
   return '<div class="ttotal"><div class="t">'+esc(title)+'</div>'
     +'<div class="v num">'+money(price)+'</div>'
-    +'<div class="refsub">+'+money(profit)+' / unit · '+marginTxt+'</div></div>';
+    +'<div class="refsub"><span class="'+profCls+'">'+(profit>=0?'+':'')+money(profit)+'</span> / unit · '+marginTxt+'</div></div>';
 }
 function refPricingBlock(p){
   var hasSup=(p.refSupplier!=null), hasEnd=(p.refEndUser!=null);
