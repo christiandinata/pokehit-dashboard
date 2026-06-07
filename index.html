@@ -36,6 +36,42 @@
   .gate code{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:3px 8px;color:var(--acc);font-size:13px;word-break:break-all;}
   .gate .big{font-size:34px;}
 
+  /* ===== Login screen ===== */
+  .login{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;gap:20px;}
+  .login .logo-row{display:flex;align-items:center;gap:10px;font-size:24px;font-weight:800;letter-spacing:.3px;}
+  .login .logo-row .lg{font-size:30px;}
+  .login-card{
+    width:100%;max-width:360px;background:var(--surface);
+    border:1px solid var(--border);border-radius:var(--radius-card);
+    padding:24px 22px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:14px;
+  }
+  .login-card h3{margin:0 0 2px;font-size:16px;font-weight:700;}
+  .login-card .sub{margin:-8px 0 4px;font-size:13px;color:var(--muted);}
+  .fld{display:flex;flex-direction:column;gap:6px;}
+  .fld label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;}
+  .fld input{
+    width:100%;min-height:44px;padding:11px 13px;
+    background:var(--panel-b);border:1px solid var(--border);border-radius:var(--radius-ctl);
+    color:var(--text);font-size:15px;outline:none;transition:border-color .15s;
+  }
+  .fld input:focus{border-color:var(--acc);}
+  .btn-primary{
+    width:100%;min-height:46px;border:none;border-radius:var(--radius-ctl);cursor:pointer;
+    background:var(--acc);color:#06101e;font-size:15px;font-weight:700;letter-spacing:.2px;
+    transition:filter .15s,opacity .15s;
+  }
+  .btn-primary:hover{filter:brightness(1.07);}
+  .btn-primary:disabled{opacity:.6;cursor:default;}
+  .login-err{min-height:18px;font-size:13px;color:var(--red);font-weight:600;text-align:center;}
+  .signout{
+    margin-top:8px;display:inline-flex;align-items:center;gap:6px;
+    background:transparent;border:1px solid var(--border);border-radius:var(--radius-ctl);
+    color:var(--muted);font-size:12px;font-weight:600;padding:7px 12px;cursor:pointer;
+    transition:border-color .15s,color .15s;
+  }
+  .signout:hover{border-color:var(--red);color:var(--red);}
+  .mseg.signout-m{color:var(--red);}
+
   /* ===== App shell (desktop sidebar + main) ===== */
   .shell{display:block;}
 
@@ -242,6 +278,12 @@
   .mover .mk{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
   .mover .mv{font-size:17px;font-weight:700;margin-top:4px;}
   .mover .md{font-size:12px;color:var(--muted);margin-top:2px;}
+  .mover.expandable{cursor:pointer;transition:border-color .15s;}
+  .mover.expandable:hover{border-color:#2d4a66;}
+  .mover .mk .chev{font-size:9px;margin-left:6px;}
+  .mover .mexp{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);}
+  .mover.open .mexp{display:block;animation:fadein .2s ease;}
+  .mover.open .chev{transform:rotate(90deg);display:inline-block;}
 
   /* Sandbox */
   .sb-out{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:6px;}
@@ -337,7 +379,25 @@
 </head>
 <body>
 
-<div id="gate" class="gate">
+<div id="login" class="login" style="display:none;">
+  <div class="logo-row"><span class="lg">🎴</span> PokeHit</div>
+  <form id="loginForm" class="login-card" autocomplete="on">
+    <h3>Sign in</h3>
+    <div class="sub">Enter your dashboard credentials.</div>
+    <div class="fld">
+      <label for="loginUser">Username</label>
+      <input id="loginUser" name="username" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
+    </div>
+    <div class="fld">
+      <label for="loginPass">Password</label>
+      <input id="loginPass" name="password" type="password" autocomplete="current-password">
+    </div>
+    <div id="loginErr" class="login-err" role="alert"></div>
+    <button id="loginBtn" class="btn-primary" type="submit">Sign in</button>
+  </form>
+</div>
+
+<div id="gate" class="gate" style="display:none;">
   <div class="spinner"></div>
   <h2>Loading PokeHit…</h2>
   <p>Fetching your live dashboard data.</p>
@@ -376,6 +436,7 @@
         <section id="sec-overview"></section>
         <section id="sec-modal"></section>
         <section id="sec-sales"></section>
+        <section id="sec-bydate"></section>
         <section id="sec-charts"></section>
         <section id="sec-performance"></section>
         <section id="sec-capital"></section>
@@ -421,7 +482,7 @@ var pnl={}, bal={}, products=[], monthly=[], opex=[], capital=[];
 
 /* ===================== TABS / NAV ===================== */
 const TABS = [
-  ["overview","Overview","📊"],["modal","Modal","💰"],["sales","Sales","🧾"],["charts","Charts","📈"],
+  ["overview","Overview","📊"],["modal","Modal","💰"],["sales","Sales","🧾"],["bydate","By Date","📅"],["charts","Charts","📈"],
   ["performance","Performance","🏆"],["capital","Capital","🏦"],["sandbox","Sandbox","🎚️"],["audit","Audit","🔍"]
 ];
 function buildTabs(){
@@ -431,10 +492,13 @@ function buildTabs(){
   }).join("");
   el("navMobile").innerHTML = TABS.map(function(t,i){
     return '<button class="mseg'+(i===0?' active':'')+'" data-tab="'+t[0]+'">'+esc(t[1])+'</button>';
-  }).join("");
+  }).join("")
+    +'<button class="mseg signout-m" id="signoutBtnM" type="button">⏻ Sign out</button>';
   Array.prototype.forEach.call(document.querySelectorAll(".navitem,.mseg"),function(b){
+    if(b.id==="signoutBtnM") return;
     b.addEventListener("click",function(){ setTab(b.getAttribute("data-tab")); });
   });
+  var sbm=el("signoutBtnM"); if(sbm) sbm.addEventListener("click",signOut);
 }
 function syncNav(name){
   Array.prototype.forEach.call(document.querySelectorAll(".navitem"),function(b){
@@ -558,9 +622,13 @@ function modalLine(p){
 }
 function batchTable(p){
   var batches=arr(p.modalBatches);
-  if(!batches.length) return '<div class="nostock">no warehouse stock — modal based on last known</div>';
+  if(!batches.length){
+    if(p.modalSource==="historical") return '<div class="nostock" style="font-style:normal;color:var(--muted);">Sold out · no batch detail available.</div>';
+    return '<div class="empty">No cost batches.</div>';
+  }
   var rows=batches.map(function(b){
-    return '<tr><td>'+esc(b.label||("#"+(b.shipmentId||"")))+'</td>'
+    var histTag = b && b.historical ? ' <span style="font-size:10px;color:var(--muted);">(last known)</span>' : '';
+    return '<tr><td>'+esc(b.label||("#"+(b.shipmentId||"")))+histTag+'</td>'
       +'<td>'+esc(b.date||"—")+'</td>'
       +'<td class="num">'+num(b.qtyRemaining)+'</td>'
       +'<td class="num">'+money(b.buyPerUnit)+'</td>'
@@ -575,14 +643,28 @@ function renderModal(){
   if(!products.length){ el("sec-modal").innerHTML='<div class="empty">No products.</div>'; return; }
   var html='<div class="sec-title">Modal — how each cost is built</div>';
   html += products.map(function(p){
-    var hasStock=(p.inWarehouse||0)>0 || arr(p.modalBatches).length>0;
+    // modalSource: 'warehouse' | 'historical' | 'none'. Fall back to a sensible inference if absent.
+    var src=p.modalSource;
+    if(!src){
+      var hasStock=(p.inWarehouse||0)>0 || arr(p.modalBatches).length>0;
+      var hasCost=(+p.modalLanded||0)>0 || arr(p.modalBatches).length>0;
+      src = (p.inWarehouse||0)>0 ? "warehouse" : (hasCost ? "historical" : "none");
+    }
+    var body;
+    if(src==="none"){
+      body = '<div class="nostock" style="font-style:normal;color:var(--muted);">No cost data yet (on-order only).</div>';
+    } else if(src==="historical"){
+      body = modalLine(p)
+        +'<div class="nostock" style="font-style:normal;color:var(--muted);">Sold out · modal shown is the last-known landed cost.</div>'
+        +'<div class="detail">'+batchTable(p)+'</div>';
+    } else {
+      body = modalLine(p)+'<div class="detail">'+batchTable(p)+'</div>';
+    }
     return '<div class="card pcard" id="modal-'+esc(p.productId)+'">'
       +'<div class="pname">🎴 '+esc(prodName(p))+' <span class="chev">▶</span></div>'
       +'<div class="pmeta">'+esc([p.setName,p.language,p.type].filter(Boolean).join(" · "))+'</div>'
       +stockBadges(p)
-      +modalLine(p)
-      +(hasStock?'':'<div class="nostock">no warehouse stock — modal based on last known</div>')
-      +'<div class="detail">'+batchTable(p)+'</div>'
+      +body
     +'</div>';
   }).join("");
   el("sec-modal").innerHTML=html;
@@ -635,17 +717,159 @@ function renderSales(){
   });
 }
 
+/* ===================== BY DATE ===================== */
+var bdState = { gran:"day", period:null };
+
+function bdAllSales(){
+  // Every sale across all products (no product filter), with product name + buyer.
+  var out=[];
+  products.forEach(function(p){
+    var nm=prodName(p);
+    arr(p.sales).forEach(function(s){
+      if(!s || !s.date) return;
+      out.push({
+        date:String(s.date).slice(0,10),
+        qty:+s.qty||0, total:+s.total||0, cogs:+s.cogs||0, profit:+s.profit||0,
+        unitPrice:(s.unitPrice!=null?+s.unitPrice:( (+s.qty||0)>0 ? (+s.total||0)/(+s.qty||1) : 0)),
+        marginPct:(s.marginPct!=null?+s.marginPct:((+s.total||0)>0?((+s.profit||0)/(+s.total||1)*100):null)),
+        loc:s.loc||"", buyer:s.buyer||"", product:nm
+      });
+    });
+  });
+  return out;
+}
+function bdKey(date){
+  if(bdState.gran==="month") return date.slice(0,7);
+  if(bdState.gran==="week") return isoWeekKey(date);
+  return date;
+}
+function bdWeekRange(isoKey){
+  // isoKey YYYY-Www -> {label}. Compute Monday..Sunday of that ISO week.
+  var m=/^(\d{4})-W(\d{2})$/.exec(isoKey);
+  if(!m) return isoKey;
+  var year=+m[1], week=+m[2];
+  var simple=new Date(Date.UTC(year,0,1+(week-1)*7));
+  var dow=simple.getUTCDay();
+  var monday=new Date(simple);
+  // ISO: week 1 contains Jan 4; adjust to Monday
+  var isoMon=(dow<=4) ? simple.getUTCDate()-((dow+6)%7) : simple.getUTCDate()+(8-dow);
+  monday=new Date(Date.UTC(year,0,1));
+  // robust: find Thursday of the target week then back up to Monday
+  var jan4=new Date(Date.UTC(year,0,4));
+  var jan4Dow=(jan4.getUTCDay()+6)%7;
+  var week1Mon=new Date(jan4); week1Mon.setUTCDate(jan4.getUTCDate()-jan4Dow);
+  monday=new Date(week1Mon); monday.setUTCDate(week1Mon.getUTCDate()+(week-1)*7);
+  var sunday=new Date(monday); sunday.setUTCDate(monday.getUTCDate()+6);
+  var d1=monday.getUTCDate(), d2=sunday.getUTCDate();
+  var mo1=MON[monday.getUTCMonth()], mo2=MON[sunday.getUTCMonth()];
+  var rng=(mo1===mo2) ? (d1+"–"+d2+" "+mo1) : (d1+" "+mo1+" – "+d2+" "+mo2);
+  return "W"+week+" · "+rng;
+}
+function bdPeriodLabel(key){
+  if(bdState.gran==="month"){
+    var mm=/^(\d{4})-(\d{2})$/.exec(key);
+    if(mm) return MON[(+mm[2])-1]+" "+mm[1];
+    return key;
+  }
+  if(bdState.gran==="week") return bdWeekRange(key);
+  // day
+  var md=/^(\d{4})-(\d{2})-(\d{2})$/.exec(key);
+  if(md) return (+md[3])+" "+MON[(+md[2])-1]+" "+md[1];
+  return key;
+}
+function bdPeriods(){
+  var sales=bdAllSales();
+  var seen={};
+  sales.forEach(function(s){ seen[bdKey(s.date)]=true; });
+  return Object.keys(seen).sort().reverse(); // newest first
+}
+function renderByDate(){
+  var sec=el("sec-bydate");
+  if(!products.length){ sec.innerHTML='<div class="empty">No products.</div>'; return; }
+  var periods=bdPeriods();
+  if(!periods.length){ sec.innerHTML='<div class="sec-title">Sales by period</div><div class="card"><div class="empty">No sales recorded yet.</div></div>'; return; }
+  if(bdState.period===null || periods.indexOf(bdState.period)<0) bdState.period=periods[0];
+
+  var opts=periods.map(function(k){
+    return '<option value="'+esc(k)+'"'+(k===bdState.period?' selected':'')+'>'+esc(bdPeriodLabel(k))+'</option>';
+  }).join("");
+
+  sec.innerHTML=
+    '<div class="sec-title">Sales by period</div>'
+   +'<div class="card">'
+     +'<div class="chart-controls">'
+       +'<div class="ctl-row"><span class="ctl-lbl">Granularity</span>'
+         +'<div class="seg" id="bdGran">'
+           +'<button data-v="day">Day</button>'
+           +'<button data-v="week">Week</button>'
+           +'<button data-v="month">Month</button></div></div>'
+       +'<div class="ctl-row grow"><span class="ctl-lbl">Period</span>'
+         +'<select class="dd" id="bdPeriod">'+opts+'</select></div>'
+     +'</div>'
+     +'<div class="ttotals" id="bdSummary"></div>'
+     +'<div id="bdTable"></div>'
+   +'</div>';
+
+  function syncSeg(){
+    Array.prototype.forEach.call(el("bdGran").querySelectorAll("button"),function(b){
+      b.classList.toggle("on", b.getAttribute("data-v")===bdState.gran);
+    });
+  }
+  syncSeg();
+  Array.prototype.forEach.call(el("bdGran").querySelectorAll("button"),function(b){
+    b.addEventListener("click",function(){ bdState.gran=b.getAttribute("data-v"); bdState.period=null; renderByDate(); });
+  });
+  el("bdPeriod").addEventListener("change",function(e){ bdState.period=e.target.value; refreshByDate(); });
+  refreshByDate();
+}
+function refreshByDate(){
+  var rows=bdAllSales().filter(function(s){ return bdKey(s.date)===bdState.period; })
+    .sort(function(a,b){ return (a.date<b.date?-1:a.date>b.date?1:0); });
+
+  var units=0, rev=0, cogs=0, profit=0;
+  rows.forEach(function(s){ units+=s.qty; rev+=s.total; cogs+=s.cogs; profit+=s.profit; });
+  var margin = rev>0 ? (profit/rev*100) : null;
+
+  el("bdSummary").innerHTML=
+    '<span class="ttotal"><span class="t">Sales</span><div class="v num">'+num(rows.length)+'</div></span>'
+   +'<span class="ttotal"><span class="t">Units</span><div class="v num">'+num(units)+'</div></span>'
+   +'<span class="ttotal"><span class="t">Revenue</span><div class="v num">'+money(rev)+'</div></span>'
+   +'<span class="ttotal"><span class="t">COGS</span><div class="v num">'+money(cogs)+'</div></span>'
+   +'<span class="ttotal"><span class="t">Gross profit</span><div class="v num '+marginClass(margin)+'">'+money(profit)+'</div></span>'
+   +'<span class="ttotal"><span class="t">Margin</span><div class="v num '+marginClass(margin)+'">'+pct(margin)+'</div></span>';
+
+  if(!rows.length){ el("bdTable").innerHTML='<div class="empty">No sales in this period.</div>'; return; }
+  var body=rows.map(function(s){
+    return '<tr><td>'+esc(s.date||"—")+'</td>'
+      +'<td>'+esc(s.product||"—")+'</td>'
+      +'<td>'+esc(s.buyer||"—")+'</td>'
+      +'<td>'+esc(s.loc||"—")+'</td>'
+      +'<td class="num">'+num(s.qty)+'</td>'
+      +'<td class="num">'+money(s.unitPrice)+'</td>'
+      +'<td class="num">'+money(s.total)+'</td>'
+      +'<td class="num '+marginClass(s.marginPct)+'">'+money(s.profit)+'</td>'
+      +'<td class="num '+marginClass(s.marginPct)+'">'+pct(s.marginPct)+'</td></tr>';
+  }).join("");
+  el("bdTable").innerHTML='<div class="tscroll"><table><thead><tr>'
+    +'<th>Date</th><th>Product</th><th>Buyer</th><th>Loc</th><th>Qty</th><th>Unit</th><th>Total</th><th>Profit</th><th>Margin</th>'
+    +'</tr></thead><tbody>'+body+'</tbody></table></div>';
+}
+
 /* ===================== CHARTS ===================== */
 var chartState = { gran:"daily", metric:"revenue", product:"all" };
 
 function allSales(){
-  // Returns flat list of {date, qty, total, cogs, profit, pid} respecting product filter.
+  // Returns flat list of {date, qty, total, cogs, profit, product, buyer} respecting product filter.
   var out=[];
   products.forEach(function(p){
     if(chartState.product!=="all" && String(p.productId)!==String(chartState.product)) return;
+    var nm=prodName(p);
     arr(p.sales).forEach(function(s){
       if(!s || !s.date) return;
-      out.push({date:String(s.date).slice(0,10), qty:+s.qty||0, total:+s.total||0, cogs:+s.cogs||0, profit:+s.profit||0});
+      out.push({
+        date:String(s.date).slice(0,10), qty:+s.qty||0, total:+s.total||0,
+        cogs:+s.cogs||0, profit:+s.profit||0, product:nm, buyer:s.buyer||""
+      });
     });
   });
   return out;
@@ -838,8 +1062,34 @@ function renderChartSummary(series){
   var best=series[0], worst=series[0];
   series.forEach(function(d){ if(d.val>best.val)best=d; if(d.val<worst.val)worst=d; });
   el("chartMovers").innerHTML=
-    '<div class="mover"><div class="mk">Best '+unitWord+'</div><div class="mv pos">'+fmtMetric(best.val)+'</div><div class="md">'+esc(prettyKey(best.key))+'</div></div>'
-   +'<div class="mover"><div class="mk">Worst '+unitWord+'</div><div class="mv '+(worst.val<0?"neg":"")+'">'+fmtMetric(worst.val)+'</div><div class="md">'+esc(prettyKey(worst.key))+'</div></div>';
+    moverCard("Best "+unitWord, best, "pos")
+   +moverCard("Worst "+unitWord, worst, worst.val<0?"neg":"");
+  Array.prototype.forEach.call(el("chartMovers").querySelectorAll(".mover.expandable"),function(m){
+    m.addEventListener("click",function(){ m.classList.toggle("open"); });
+  });
+}
+function salesInBucket(key){
+  // Sales (respecting product filter + current granularity) that fall in the given bucket key.
+  return allSales().filter(function(s){ return bucketKey(s.date)===key; })
+    .sort(function(a,b){ return (a.date<b.date?-1:a.date>b.date?1:0); });
+}
+function moverCard(label, d, valCls){
+  var list=salesInBucket(d.key);
+  var rows=list.map(function(s){
+    return '<tr><td>'+esc(s.product||"—")+'</td>'
+      +'<td>'+esc(s.buyer||"—")+'</td>'
+      +'<td class="num">'+num(s.qty)+'</td>'
+      +'<td class="num">'+money(s.total)+'</td></tr>';
+  }).join("");
+  var tbl = list.length
+    ? '<div class="tscroll"><table class="compact"><thead><tr><th>Product</th><th>Buyer</th><th>Qty</th><th>Total</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    : '<div class="empty">No sales in this period.</div>';
+  return '<div class="mover expandable">'
+    +'<div class="mk">'+esc(label)+'<span class="chev">▶</span></div>'
+    +'<div class="mv '+valCls+'">'+fmtMetric(d.val)+'</div>'
+    +'<div class="md">'+esc(prettyKey(d.key))+'</div>'
+    +'<div class="mexp">'+tbl+'</div>'
+  +'</div>';
 }
 function refreshChart(){
   var series=buildSeries();
@@ -1231,11 +1481,19 @@ function jumpToProduct(pid){
 function setTabSilent(name){ syncNav(name); }
 
 /* ===================== FOOTER ===================== */
+function signOut(){
+  try{ sessionStorage.removeItem("pokehit_auth"); }catch(e){}
+  location.reload();
+}
 function renderFoot(){
   var ts=D.generatedAt||"";
   var f=el("sbFoot");
-  if(f) f.innerHTML='<div class="live"><span class="dot"></span> Data is live</div>'
-    +'<div style="margin-top:4px;">Generated '+esc(ts)+'</div>';
+  if(f){
+    f.innerHTML='<div class="live"><span class="dot"></span> Data is live</div>'
+      +'<div style="margin-top:4px;">Generated '+esc(ts)+'</div>'
+      +'<button class="signout" id="signoutBtn" type="button">⏻ Sign out</button>';
+    var sb=el("signoutBtn"); if(sb) sb.addEventListener("click",signOut);
+  }
 }
 
 /* ===================== BOOT ===================== */
@@ -1254,6 +1512,7 @@ function boot(){
   renderOverview();
   renderModal();
   renderSales();
+  renderByDate();
   renderCharts();
   renderPerformance();
   renderCapital();
@@ -1274,42 +1533,74 @@ function boot(){
 
 var D = {};
 (function(){
-  var KEY = (location.hash ? location.hash.slice(1) : "").trim();
-  if(!KEY){
-    var qs = new URLSearchParams(location.search);
-    KEY = (qs.get("key")||"").trim();
+  var DATA_URL="https://klmiperlzdcsybgvudfd.supabase.co/functions/v1/dashboard?action=data";
+
+  function showLogin(){ var l=el("login"); if(l) l.style.display="flex"; var g=el("gate"); if(g) g.style.display="none"; }
+  function showGate(){ var l=el("login"); if(l) l.style.display="none"; var g=el("gate"); if(g) g.style.display="flex"; }
+
+  function fetchData(token){
+    // Resolves with parsed JSON, or rejects with Error("UNAUTHORIZED") / generic.
+    return fetch(DATA_URL, { headers: { Authorization: "Basic " + token } })
+      .then(function(r){
+        if(r.status===401||r.status===403){ var e=new Error("UNAUTHORIZED"); e.code=401; throw e; }
+        if(!r.ok) throw new Error("HTTP "+r.status);
+        return r.json();
+      });
   }
-  function showError(title, body){
-    var g=el("gate");
-    if(!g) return;
-    g.innerHTML='<div class="big">🔒</div><h2>'+title+'</h2><p>'+body+'</p>';
-  }
-  if(!KEY){
-    showError("Access key needed",
-      'Add your access key to the URL like this:<br><br><code>'
-      + (location.origin+location.pathname) + '#yourkey</code>');
-    return;
-  }
-  var URL_BASE="https://klmiperlzdcsybgvudfd.supabase.co/functions/v1/dashboard";
-  fetch(URL_BASE+"?action=data&key="+encodeURIComponent(KEY))
-    .then(function(r){
-      if(!r.ok){
-        if(r.status===401||r.status===403) throw new Error("BADKEY");
-        throw new Error("HTTP "+r.status);
-      }
-      return r.json();
-    })
-    .then(function(json){ D = json||{}; boot(); })
-    .catch(function(err){
-      if(String(err && err.message)==="BADKEY"){
-        showError("Wrong access key",
-          'That key was not accepted. Check the part after <code>#</code> in your URL and try again.');
-      } else {
-        showError("Couldn\'t load data",
-          'Something went wrong fetching the dashboard. Check your connection and the access key, then reload.<br><br><code>'
-          + esc(String(err && err.message || err)) + '</code>');
-      }
+
+  function launch(json){ D = json||{}; var l=el("login"); if(l) l.style.display="none"; boot(); }
+
+  function wireLogin(){
+    var form=el("loginForm"), errEl=el("loginErr"), btn=el("loginBtn");
+    if(!form) return;
+    form.addEventListener("submit",function(ev){
+      ev.preventDefault();
+      var u=(el("loginUser")&&el("loginUser").value||"").trim();
+      var p=(el("loginPass")&&el("loginPass").value)||"";
+      if(errEl) errEl.textContent="";
+      if(!u || !p){ if(errEl) errEl.textContent="Enter a username and password."; return; }
+      var token = btoa(u + ":" + p);
+      if(btn){ btn.disabled=true; btn.textContent="Signing in…"; }
+      fetchData(token)
+        .then(function(json){
+          try{ sessionStorage.setItem("pokehit_auth", token); }catch(e){}
+          launch(json);
+        })
+        .catch(function(err){
+          if(btn){ btn.disabled=false; btn.textContent="Sign in"; }
+          if(err && err.code===401){
+            if(errEl) errEl.textContent="Invalid username or password.";
+          } else {
+            if(errEl) errEl.textContent="Couldn't reach server. Try again.";
+          }
+        });
     });
+  }
+
+  wireLogin();
+
+  // Try a saved token first.
+  var saved="";
+  try{ saved=(sessionStorage.getItem("pokehit_auth")||"").trim(); }catch(e){}
+
+  if(saved){
+    showGate();
+    fetchData(saved)
+      .then(function(json){ launch(json); })
+      .catch(function(err){
+        if(err && err.code===401){
+          try{ sessionStorage.removeItem("pokehit_auth"); }catch(e){}
+          showLogin();
+        } else {
+          // Network/server error with a saved token: fall back to the login screen
+          // so the user can retry, with a hint.
+          var errEl=el("loginErr"); if(errEl) errEl.textContent="Couldn't reach server. Try again.";
+          showLogin();
+        }
+      });
+  } else {
+    showLogin();
+  }
 })();
 
 </script>
