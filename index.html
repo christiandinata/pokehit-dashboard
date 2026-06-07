@@ -2065,9 +2065,31 @@ function jumpToProduct(pid){
 }
 function setTabSilent(name){ syncNav(name); }
 
+/* ===================== AUTH STORAGE ===================== */
+/* Keep the login token in localStorage so the session survives tab/app/browser
+   restarts — you stay signed in until you explicitly sign out. Migrates any
+   token left behind by the older session-only version. */
+var AUTH_KEY="pokehit_auth";
+function authGet(){
+  var t="";
+  try{ t=(localStorage.getItem(AUTH_KEY)||"").trim(); }catch(e){}
+  if(!t){
+    try{
+      var s=(sessionStorage.getItem(AUTH_KEY)||"").trim();
+      if(s){ t=s; try{ localStorage.setItem(AUTH_KEY,s); sessionStorage.removeItem(AUTH_KEY); }catch(e){} }
+    }catch(e){}
+  }
+  return t;
+}
+function authSet(token){ try{ localStorage.setItem(AUTH_KEY, token); }catch(e){} }
+function authClear(){
+  try{ localStorage.removeItem(AUTH_KEY); }catch(e){}
+  try{ sessionStorage.removeItem(AUTH_KEY); }catch(e){}
+}
+
 /* ===================== FOOTER ===================== */
 function signOut(){
-  try{ sessionStorage.removeItem("pokehit_auth"); }catch(e){}
+  authClear();
   location.reload();
 }
 function renderFoot(){
@@ -2157,7 +2179,7 @@ var D = {};
       if(btn){ btn.disabled=true; btn.textContent="Signing in…"; }
       fetchData(token)
         .then(function(json){
-          try{ sessionStorage.setItem("pokehit_auth", token); }catch(e){}
+          authSet(token);
           launch(json);
         })
         .catch(function(err){
@@ -2174,8 +2196,7 @@ var D = {};
   wireLogin();
 
   // Try a saved token first.
-  var saved="";
-  try{ saved=(sessionStorage.getItem("pokehit_auth")||"").trim(); }catch(e){}
+  var saved=authGet();
 
   if(saved){
     showGate();
@@ -2183,7 +2204,7 @@ var D = {};
       .then(function(json){ launch(json); })
       .catch(function(err){
         if(err && err.code===401){
-          try{ sessionStorage.removeItem("pokehit_auth"); }catch(e){}
+          authClear();
           showLogin();
         } else {
           // Network/server error with a saved token: fall back to the login screen
