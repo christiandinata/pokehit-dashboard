@@ -381,6 +381,8 @@
   .ledger-filter{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
   .ledger-filter .ctl-row{flex:1 1 200px;min-width:160px;}
   .ledger-count{font-size:12px;color:var(--muted);margin-bottom:10px;}
+  /* Let description cells wrap and breathe instead of forcing horizontal scroll. */
+  th.col-desc,td.col-desc{white-space:normal;min-width:220px;max-width:360px;text-align:left;line-height:1.4;}
 
   .foot{display:none;}
 
@@ -1431,7 +1433,7 @@ var ALLOC_COLORS = {
 };
 function allocColor(bucket){ return ALLOC_COLORS[bucket] || "var(--muted)"; }
 
-var exLedgerState = { cat:"all", q:"" };
+var exLedgerState = { cat:"all", q:"", sort:"date_desc" };
 
 function renderExpenses(){
   var sec=el("sec-expenses");
@@ -1528,10 +1530,10 @@ function renderExpenses(){
       return '<tr><td>'+esc(r.date||"—")+'</td>'
         +'<td>'+esc(r.counterparty||"—")+'</td>'
         +'<td class="num">'+money(Math.abs(+r.amount||0))+'</td>'
-        +'<td>'+esc(r.desc||"—")+'</td></tr>';
+        +'<td class="col-desc">'+esc(r.desc||"—")+'</td></tr>';
     }).join("");
     var tx = txRows.length
-      ? '<div class="tscroll"><table class="compact"><thead><tr><th>Date</th><th>Counterparty</th><th>Amount</th><th>Description</th></tr></thead><tbody>'+txBody+'</tbody></table></div>'
+      ? '<div class="tscroll"><table class="compact"><thead><tr><th>Date</th><th>Counterparty</th><th>Amount</th><th class="col-desc">Description</th></tr></thead><tbody>'+txBody+'</tbody></table></div>'
       : '<div class="empty">No matching transactions.</div>';
     return '<div class="opx" data-opx="1">'
       +'<div class="opx-head"><span class="opx-name"><span class="chev">▶</span>'+esc(cat||"—")+'</span>'
@@ -1558,6 +1560,14 @@ function renderExpenses(){
      +'<div class="ledger-filter">'
        +'<div class="ctl-row"><span class="ctl-lbl">Category</span>'
          +'<select class="dd" id="exLedgerCat">'+catOpts+'</select></div>'
+       +'<div class="ctl-row"><span class="ctl-lbl">Sort</span>'
+         +'<select class="dd" id="exLedgerSort">'
+           +'<option value="date_desc">Newest first</option>'
+           +'<option value="date_asc">Oldest first</option>'
+           +'<option value="amt_desc">Amount: high → low</option>'
+           +'<option value="amt_asc">Amount: low → high</option>'
+           +'<option value="cat_asc">Category (A–Z)</option>'
+         +'</select></div>'
        +'<div class="ctl-row grow"><span class="ctl-lbl">Search</span>'
          +'<input class="inp" id="exLedgerSearch" type="search" inputmode="search" autocomplete="off" placeholder="counterparty, description…"></div>'
      +'</div>'
@@ -1573,8 +1583,9 @@ function renderExpenses(){
   });
 
   // wire (D) filter + search
-  var catSel=el("exLedgerCat"), srch=el("exLedgerSearch");
+  var catSel=el("exLedgerCat"), sortSel=el("exLedgerSort"), srch=el("exLedgerSearch");
   if(catSel){ catSel.value=exLedgerState.cat; catSel.addEventListener("change",function(e){ exLedgerState.cat=e.target.value; refreshExLedger(); }); }
+  if(sortSel){ sortSel.value=exLedgerState.sort; sortSel.addEventListener("change",function(e){ exLedgerState.sort=e.target.value; refreshExLedger(); }); }
   if(srch){ srch.value=exLedgerState.q; srch.addEventListener("input",function(e){ exLedgerState.q=e.target.value; refreshExLedger(); }); }
   refreshExLedger();
 }
@@ -1586,8 +1597,21 @@ function refreshExLedger(){
   var gs=el("searchD")||el("searchM"); if(gs) globalQ=(gs.value||"").trim().toLowerCase();
   var localQ=(exLedgerState.q||"").trim().toLowerCase();
   var rows=arr(cf.outflowRows).slice();
-  // newest first
-  rows.sort(function(a,b){ return (a.date<b.date?1:a.date>b.date?-1:0); });
+  // sort per exLedgerState.sort (default: newest first)
+  var sortBy=exLedgerState.sort||"date_desc";
+  rows.sort(function(a,b){
+    var ad=a.date||"", bd=b.date||"";
+    var aa=Math.abs(+a.amount||0), ba=Math.abs(+b.amount||0);
+    switch(sortBy){
+      case "date_asc": return (ad<bd?-1:ad>bd?1:0);
+      case "amt_desc": return ba-aa;
+      case "amt_asc": return aa-ba;
+      case "cat_asc":
+        var ac=(a.category||"").toLowerCase(), bc=(b.category||"").toLowerCase();
+        return (ac<bc?-1:ac>bc?1:0);
+      default: return (ad<bd?1:ad>bd?-1:0); // date_desc
+    }
+  });
   rows=rows.filter(function(r){
     if(exLedgerState.cat!=="all" && (r.category||"")!==exLedgerState.cat) return false;
     function hit(q){
@@ -1605,10 +1629,10 @@ function refreshExLedger(){
       +'<td>'+esc(r.category||"—")+'</td>'
       +'<td>'+esc(r.counterparty||"—")+'</td>'
       +'<td class="num neg">'+money(Math.abs(+r.amount||0))+'</td>'
-      +'<td>'+esc(r.desc||"—")+'</td></tr>';
+      +'<td class="col-desc">'+esc(r.desc||"—")+'</td></tr>';
   }).join("");
   tbl.innerHTML='<div class="tscroll"><table><thead><tr>'
-    +'<th>Date</th><th>Category</th><th>Counterparty</th><th>Amount</th><th>Description</th>'
+    +'<th>Date</th><th>Category</th><th>Counterparty</th><th>Amount</th><th class="col-desc">Description</th>'
     +'</tr></thead><tbody>'+body+'</tbody></table></div>';
 }
 
