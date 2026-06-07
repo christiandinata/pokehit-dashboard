@@ -727,8 +727,10 @@ function renderModal(){
 }
 
 /* ===================== SALES (per product) ===================== */
-function salesTable(p){
-  var sales=arr(p.sales);
+var salesState = { product:"all", buyer:"all", q:"" };
+
+function salesTable(p,subset){
+  var sales=(subset!=null)?subset:arr(p.sales);
   if(!sales.length) return '<div class="empty">No sales recorded for this product.</div>';
   var rows=sales.map(function(s){
     return '<tr><td>'+esc(s.date||"—")+'</td>'
@@ -745,27 +747,108 @@ function salesTable(p){
     +'<th>Date</th><th>Buyer</th><th>Loc</th><th>Qty</th><th>Unit</th><th>Total</th><th>COGS</th><th>Profit</th><th>Margin</th>'
     +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
-function salesTotals(p){
+function salesTotals(t){
+  // t = { units, revenue, gross, margin }  (precomputed from product or filtered rows)
   return '<div class="ttotals">'
-    +'<div class="ttotal"><div class="t">Units sold</div><div class="v num">'+num(p.unitsSold)+'</div></div>'
-    +'<div class="ttotal"><div class="t">Revenue</div><div class="v num">'+money(p.revenue)+'</div></div>'
-    +'<div class="ttotal"><div class="t">Gross profit</div><div class="v num '+marginClass(p.marginPct)+'">'+money(p.grossProfit)+'</div></div>'
-    +'<div class="ttotal"><div class="t">Margin</div><div class="v num '+marginClass(p.marginPct)+'">'+pct(p.marginPct)+'</div></div>'
+    +'<div class="ttotal"><div class="t">Units sold</div><div class="v num">'+num(t.units)+'</div></div>'
+    +'<div class="ttotal"><div class="t">Revenue</div><div class="v num">'+money(t.revenue)+'</div></div>'
+    +'<div class="ttotal"><div class="t">Gross profit</div><div class="v num '+marginClass(t.margin)+'">'+money(t.gross)+'</div></div>'
+    +'<div class="ttotal"><div class="t">Margin</div><div class="v num '+marginClass(t.margin)+'">'+pct(t.margin)+'</div></div>'
     +'</div>';
+}
+function salesTotalsFromRows(rows){
+  var units=0, revenue=0, gross=0;
+  arr(rows).forEach(function(s){
+    units+=(+s.qty||0); revenue+=(+s.total||0); gross+=(+s.profit||0);
+  });
+  return { units:units, revenue:revenue, gross:gross, margin:(revenue>0?(gross/revenue*100):null) };
+}
+function salesBuyers(){
+  // distinct, sorted, non-blank buyers across all sales
+  var seen={};
+  products.forEach(function(p){
+    arr(p.sales).forEach(function(s){
+      var b=(s&&s.buyer)?String(s.buyer).trim():"";
+      if(b) seen[b]=true;
+    });
+  });
+  return Object.keys(seen).sort();
 }
 function renderSales(){
   if(!products.length){ el("sec-sales").innerHTML='<div class="empty">No products.</div>'; return; }
-  var html='<div class="sec-title">Sales — tap a product to drill in</div>';
-  html += products.map(function(p){
+  var prodOpts='<option value="all">All products</option>'+products.map(function(p){
+    return '<option value="'+esc(p.productId)+'">'+esc(prodName(p))+'</option>';
+  }).join("");
+  var buyerOpts='<option value="all">All buyers</option>'+salesBuyers().map(function(b){
+    return '<option value="'+esc(b)+'">'+esc(b)+'</option>';
+  }).join("");
+  var html='<div class="sec-title">Sales — tap a product to drill in</div>'
+    +'<div class="card">'
+      +'<div class="ledger-filter">'
+        +'<div class="ctl-row"><span class="ctl-lbl">Product</span>'
+          +'<select class="dd" id="salesProduct">'+prodOpts+'</select></div>'
+        +'<div class="ctl-row"><span class="ctl-lbl">Buyer</span>'
+          +'<select class="dd" id="salesBuyer">'+buyerOpts+'</select></div>'
+        +'<div class="ctl-row grow"><span class="ctl-lbl">Search</span>'
+          +'<input class="inp" id="salesSearch" type="search" inputmode="search" autocomplete="off" placeholder="product, buyer, location…"></div>'
+      +'</div>'
+      +'<div class="ledger-count" id="salesCount"></div>'
+      +'<div id="salesList"></div>'
+    +'</div>';
+  el("sec-sales").innerHTML=html;
+
+  // wire filter controls
+  var prodSel=el("salesProduct"), buyerSel=el("salesBuyer"), srch=el("salesSearch");
+  if(prodSel){ prodSel.value=salesState.product; prodSel.addEventListener("change",function(e){ salesState.product=e.target.value; refreshSales(); }); }
+  if(buyerSel){ buyerSel.value=salesState.buyer; buyerSel.addEventListener("change",function(e){ salesState.buyer=e.target.value; refreshSales(); }); }
+  if(srch){ srch.value=salesState.q; srch.addEventListener("input",function(e){ salesState.q=e.target.value; refreshSales(); }); }
+  refreshSales();
+}
+function refreshSales(){
+  var list=el("salesList"); if(!list) return;
+  var buyer=(salesState.buyer||"all");
+  var q=(salesState.q||"").trim().toLowerCase();
+  var rowFilterActive=(buyer!=="all") || (q!=="");
+
+  var prodCount=0, saleCount=0;
+  var html=products.filter(function(p){
+    return salesState.product==="all" || String(p.productId)===String(salesState.product);
+  }).map(function(p){
+    var nm=prodName(p);
+    var nmLc=nm.toLowerCase();
+    var rows=arr(p.sales).filter(function(s){
+      if(buyer!=="all" && (s&&s.buyer?String(s.buyer).trim():"")!==buyer) return false;
+      if(q){
+        var hay=(nmLc+" "+((s&&s.buyer)||"")+" "+((s&&s.loc)||"")).toLowerCase();
+        if(hay.indexOf(q)<0) return false;
+      }
+      return true;
+    });
+    if(rowFilterActive && !rows.length) return ""; // hide cards with zero matching rows
+
+    prodCount++; saleCount+=rows.length;
+
+    // Honest totals: recompute from visible rows when a row-level filter is active.
+    var totals = rowFilterActive
+      ? salesTotalsFromRows(rows)
+      : { units:p.unitsSold, revenue:p.revenue, gross:p.grossProfit, margin:p.marginPct };
+
     return '<div class="card pcard" id="sales-'+esc(p.productId)+'">'
-      +'<div class="pname">🎴 '+esc(prodName(p))+' <span class="chev">▶</span></div>'
-      +'<div class="pmeta">'+num(p.unitsSold)+' sold · '+money(p.revenue)+' rev · '
-        +'<span class="'+marginClass(p.marginPct)+'">'+pct(p.marginPct)+'</span></div>'
-      +'<div class="detail">'+salesTotals(p)+salesTable(p)+'</div>'
+      +'<div class="pname">🎴 '+esc(nm)+' <span class="chev">▶</span></div>'
+      +'<div class="pmeta">'+num(totals.units)+' sold · '+money(totals.revenue)+' rev · '
+        +'<span class="'+marginClass(totals.margin)+'">'+pct(totals.margin)+'</span></div>'
+      +'<div class="detail">'+salesTotals(totals)+salesTable(p,rowFilterActive?rows:null)+'</div>'
     +'</div>';
   }).join("");
-  el("sec-sales").innerHTML=html;
-  Array.prototype.forEach.call(el("sec-sales").querySelectorAll(".pcard"),function(c){
+
+  var cnt=el("salesCount");
+  if(cnt) cnt.textContent = num(prodCount)+(prodCount===1?" product · ":" products · ")+num(saleCount)+(saleCount===1?" sale":" sales");
+
+  if(!prodCount){ list.innerHTML='<div class="empty">No sales match.</div>'; return; }
+  list.innerHTML=html;
+
+  // Re-wire expand/collapse after every re-render (jumpToProduct relies on these cards existing).
+  Array.prototype.forEach.call(list.querySelectorAll(".pcard"),function(c){
     c.addEventListener("click",function(){ toggle(c); });
   });
 }
@@ -1717,6 +1800,9 @@ function jumpToProduct(pid){
   el("searchResults").innerHTML="";
   el("tabview").classList.remove("hidden");
   setTabSilent("sales");
+  // Clear any active sales-tab filters so the target product card is guaranteed to render.
+  salesState.product="all"; salesState.buyer="all"; salesState.q="";
+  renderSales();
   var card=el("sales-"+pid);
   if(card){
     card.classList.add("open");
