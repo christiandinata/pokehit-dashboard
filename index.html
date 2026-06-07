@@ -222,6 +222,8 @@
   .refbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
   .refbtn{background:var(--panel-b);border:1px solid var(--border);border-radius:var(--radius-ctl);padding:7px 12px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;}
   .refbtn:hover{border-color:var(--acc);}
+  .csvbtn{background:var(--panel-b);border:1px solid var(--border);border-radius:var(--radius-ctl);padding:7px 12px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;align-self:flex-end;}
+  .csvbtn:hover{border-color:var(--acc);}
 
   /* Ranked bars */
   .rrow{margin:10px 0;}
@@ -434,6 +436,7 @@
     .sres-grid{grid-template-columns:1fr;}
     select.dd, input.inp{min-height:44px;}
     .refbtn{min-height:44px;}
+    .csvbtn{min-height:44px;}
   }
   @media(max-width:380px){
     .kpis{grid-template-columns:1fr;}
@@ -539,6 +542,32 @@ function marginClass(m){
 function el(id){ return document.getElementById(id); }
 function prodName(p){
   return p.name || [p.setName,p.language,p.type].filter(Boolean).join(" ") || ("Product "+(p.productId||"?"));
+}
+
+/* ---------- CSV export helpers ---------- */
+function csvCell(v){
+  if(v==null) v="";
+  v=String(v);
+  return /[",\n\r]/.test(v) ? ('"'+v.replace(/"/g,'""')+'"') : v;
+}
+function toCSV(headers, rows){
+  var out=headers.map(csvCell).join(",")+"\r\n";
+  out+=rows.map(function(r){ return r.map(csvCell).join(","); }).join("\r\n");
+  return out;
+}
+function csvStamp(){
+  // YYYY-MM-DD for filenames; fall back to today.
+  var d=(D&&D.generatedAt)?String(D.generatedAt).slice(0,10):"";
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){ var t=new Date(); d=t.getFullYear()+"-"+("0"+(t.getMonth()+1)).slice(-2)+"-"+("0"+t.getDate()).slice(-2); }
+  return d;
+}
+function downloadCSV(filename, csv){
+  var blob=new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8;"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url; a.download=filename; a.style.display="none";
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ if(a.parentNode) a.parentNode.removeChild(a); URL.revokeObjectURL(url); }, 0);
 }
 
 /* ---------- top-level data (populated in boot) ---------- */
@@ -876,6 +905,8 @@ function renderSales(){
           +'<select class="dd" id="salesBuyer">'+buyerOpts+'</select></div>'
         +'<div class="ctl-row grow"><span class="ctl-lbl">Search</span>'
           +'<input class="inp" id="salesSearch" type="search" inputmode="search" autocomplete="off" placeholder="product, buyer, location…"></div>'
+        +'<button class="csvbtn" id="salesExportBtn" type="button">⬇ Export CSV</button>'
+        +'<button class="csvbtn" id="productsExportBtn" type="button">⬇ Export products</button>'
       +'</div>'
       +'<div class="ledger-count" id="salesCount"></div>'
       +'<div id="salesList"></div>'
@@ -887,7 +918,74 @@ function renderSales(){
   if(prodSel){ prodSel.value=salesState.product; prodSel.addEventListener("change",function(e){ salesState.product=e.target.value; refreshSales(); }); }
   if(buyerSel){ buyerSel.value=salesState.buyer; buyerSel.addEventListener("change",function(e){ salesState.buyer=e.target.value; refreshSales(); }); }
   if(srch){ srch.value=salesState.q; srch.addEventListener("input",function(e){ salesState.q=e.target.value; refreshSales(); }); }
+  var salesExp=el("salesExportBtn");
+  if(salesExp){ salesExp.addEventListener("click",function(){ downloadCSV("pokehit-sales-"+csvStamp()+".csv", toCSV(SALES_CSV_HEADERS, salesExportRows())); }); }
+  var prodExp=el("productsExportBtn");
+  if(prodExp){ prodExp.addEventListener("click",function(){ downloadCSV("pokehit-products-"+csvStamp()+".csv", toCSV(PRODUCTS_CSV_HEADERS, productsExportRows())); }); }
   refreshSales();
+}
+// Shared row-level filter predicate used by both the Sales display and the CSV export,
+// so they always stay consistent. buyer + search q over product name + buyer + loc.
+function salesRowMatch(s, nmLc, buyer, q){
+  if(buyer!=="all" && (s&&s.buyer?String(s.buyer).trim():"")!==buyer) return false;
+  if(q){
+    var hay=(nmLc+" "+((s&&s.buyer)||"")+" "+((s&&s.loc)||"")).toLowerCase();
+    if(hay.indexOf(q)<0) return false;
+  }
+  return true;
+}
+// Per-row margin: explicit marginPct field, else profit/total*100; rounded to 1 decimal.
+function salesRowMargin(s){
+  var m=(s&&s.marginPct!=null)?+s.marginPct:((+s.total||0)>0?((+s.profit||0)/(+s.total||1)*100):null);
+  if(m==null||isNaN(m)) return "";
+  return Math.round(m*10)/10;
+}
+// FLAT export rows applying the SAME filters as refreshSales (product at card level;
+// buyer + search at row level). Returns array of value arrays.
+function salesExportRows(){
+  var buyer=(salesState.buyer||"all");
+  var q=(salesState.q||"").trim().toLowerCase();
+  var out=[];
+  products.filter(function(p){
+    return salesState.product==="all" || String(p.productId)===String(salesState.product);
+  }).forEach(function(p){
+    var nm=prodName(p);
+    var nmLc=nm.toLowerCase();
+    arr(p.sales).forEach(function(s){
+      if(!salesRowMatch(s, nmLc, buyer, q)) return;
+      var qty=+s.qty||0;
+      var total=+s.total||0;
+      var unitPrice=(s.unitPrice!=null)?+s.unitPrice:(qty>0?total/qty:0);
+      out.push([
+        nm,
+        s.date?String(s.date).slice(0,10):"",
+        s.buyer||"",
+        s.loc||"",
+        qty,
+        Math.round(unitPrice),
+        Math.round(total),
+        Math.round(+s.cogs||0),
+        Math.round(+s.profit||0),
+        salesRowMargin(s)
+      ]);
+    });
+  });
+  return out;
+}
+var SALES_CSV_HEADERS=["Product","Date","Buyer","Location","Qty","Unit Price","Total","COGS","Profit","Margin %"];
+var PRODUCTS_CSV_HEADERS=["Product","In Warehouse","In Store","In Transit","On Order","Units Sold","Revenue","Gross Profit","Margin %","Landed Modal","Supplier Price","End-User Price"];
+// One row per product summary. Numeric fields as numbers; blank when null/undefined.
+function productsExportRows(){
+  function n(v){ return (v==null||isNaN(+v)) ? "" : Math.round(+v); }
+  function m(v){ return (v==null||isNaN(+v)) ? "" : Math.round(+v*10)/10; }
+  return products.map(function(p){
+    return [
+      prodName(p),
+      n(p.inWarehouse), n(p.inStore), n(p.inTransit), n(p.onOrder),
+      n(p.unitsSold), n(p.revenue), n(p.grossProfit), m(p.marginPct),
+      n(p.modalLanded), n(p.refSupplier), n(p.refEndUser)
+    ];
+  });
 }
 function refreshSales(){
   var list=el("salesList"); if(!list) return;
@@ -902,12 +1000,7 @@ function refreshSales(){
     var nm=prodName(p);
     var nmLc=nm.toLowerCase();
     var rows=arr(p.sales).filter(function(s){
-      if(buyer!=="all" && (s&&s.buyer?String(s.buyer).trim():"")!==buyer) return false;
-      if(q){
-        var hay=(nmLc+" "+((s&&s.buyer)||"")+" "+((s&&s.loc)||"")).toLowerCase();
-        if(hay.indexOf(q)<0) return false;
-      }
-      return true;
+      return salesRowMatch(s, nmLc, buyer, q);
     });
     if(rowFilterActive && !rows.length) return ""; // hide cards with zero matching rows
 
@@ -1653,6 +1746,7 @@ function renderExpenses(){
          +'</select></div>'
        +'<div class="ctl-row grow"><span class="ctl-lbl">Search</span>'
          +'<input class="inp" id="exLedgerSearch" type="search" inputmode="search" autocomplete="off" placeholder="counterparty, description…"></div>'
+       +'<button class="csvbtn" id="exLedgerExportBtn" type="button">⬇ Export CSV</button>'
      +'</div>'
      +'<div class="ledger-count" id="exLedgerCount"></div>'
      +'<div id="exLedgerTable"></div>'
@@ -1670,10 +1764,13 @@ function renderExpenses(){
   if(catSel){ catSel.value=exLedgerState.cat; catSel.addEventListener("change",function(e){ exLedgerState.cat=e.target.value; refreshExLedger(); }); }
   if(sortSel){ sortSel.value=exLedgerState.sort; sortSel.addEventListener("change",function(e){ exLedgerState.sort=e.target.value; refreshExLedger(); }); }
   if(srch){ srch.value=exLedgerState.q; srch.addEventListener("input",function(e){ exLedgerState.q=e.target.value; refreshExLedger(); }); }
+  var exExp=el("exLedgerExportBtn");
+  if(exExp){ exExp.addEventListener("click",function(){ downloadCSV("pokehit-expenses-"+csvStamp()+".csv", toCSV(EXPENSES_CSV_HEADERS, exLedgerExportRows())); }); }
   refreshExLedger();
 }
-function refreshExLedger(){
-  var tbl=el("exLedgerTable"); if(!tbl) return;
+// Filtered + sorted outflow rows. Shared by the ledger table and the CSV export
+// so the two always match. Returns the exact array refreshExLedger renders.
+function exLedgerFilteredRows(){
   var cf = cashflow || {};
   // Global search box should also filter the ledger.
   var globalQ="";
@@ -1704,6 +1801,23 @@ function refreshExLedger(){
     }
     return hit(localQ) && hit(globalQ);
   });
+  return rows;
+}
+var EXPENSES_CSV_HEADERS=["Date","Category","Counterparty","Amount","Description"];
+function exLedgerExportRows(){
+  return exLedgerFilteredRows().map(function(r){
+    return [
+      r.date?String(r.date).slice(0,10):"",
+      r.category||"",
+      r.counterparty||"",
+      Math.abs(+r.amount||0),
+      r.desc||""
+    ];
+  });
+}
+function refreshExLedger(){
+  var tbl=el("exLedgerTable"); if(!tbl) return;
+  var rows=exLedgerFilteredRows();
   var cnt=el("exLedgerCount");
   if(cnt) cnt.textContent = num(rows.length)+(rows.length===1?" transaction":" transactions");
   if(!rows.length){ tbl.innerHTML='<div class="empty">No transactions match.</div>'; return; }
