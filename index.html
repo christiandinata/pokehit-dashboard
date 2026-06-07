@@ -18,7 +18,7 @@
     --panel-a:#121b29; --acc-a:#4c9aff; --acc-b:#8b5cf6;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{margin:0;padding:0;overflow-x:hidden;}
+  html,body{margin:0;padding:0;}
   body{
     background:var(--bg); color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -144,14 +144,14 @@
   /* KPI grid */
   .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
   .kpi{
-    position:relative; min-width:0;
+    position:relative;
     background:var(--surface);
     border:1px solid var(--border); border-radius:var(--radius-card); padding:16px 16px 15px;
     cursor:pointer; transition:border-color .15s, transform .12s; box-shadow:var(--shadow);
   }
   .kpi:hover{border-color:#2d4a66;}
   .kpi .label{font-size:11px;color:var(--muted);font-weight:700;letter-spacing:.7px;text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;}
-  .kpi .val{font-size:24px;font-weight:700;margin-top:8px;line-height:1.1;min-width:0;overflow-wrap:break-word;}
+  .kpi .val{font-size:24px;font-weight:700;margin-top:8px;line-height:1.1;}
   .kpi .sub{font-size:12.5px;color:var(--muted);margin-top:5px;}
   .kpi.accent-green::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:3px;background:var(--green);}
   .kpi.accent-green{padding-left:18px;}
@@ -168,15 +168,15 @@
 
   /* Waterfall */
   .wf-row{margin:11px 0;}
-  .wf-head{display:flex;justify-content:space-between;gap:10px;font-size:13px;margin-bottom:5px;}
-  .wf-head .lbl{color:var(--muted);font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-  .wf-head .amt{font-weight:700;flex:0 0 auto;}
+  .wf-head{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;}
+  .wf-head .lbl{color:var(--muted);font-weight:600;}
+  .wf-head .amt{font-weight:700;}
   .wf-track{position:relative;height:22px;background:var(--panel-b);border:1px solid var(--border);border-radius:7px;overflow:hidden;}
   .wf-bar{position:absolute;top:0;height:100%;border-radius:6px;transition:width .5s ease,left .5s ease;}
 
   /* Donuts */
   .donuts{display:flex;gap:18px;justify-content:space-around;flex-wrap:wrap;}
-  .donut{text-align:center;flex:1 1 130px;min-width:0;}
+  .donut{text-align:center;flex:1 1 130px;}
   .donut svg{display:block;margin:0 auto;}
   .donut .dlabel{font-size:12px;color:var(--muted);margin-top:8px;font-weight:600;}
 
@@ -215,15 +215,6 @@
   .ttotal{background:var(--panel-b);border:1px solid var(--border);border-radius:var(--radius-ctl);padding:9px 13px;}
   .ttotal .t{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
   .ttotal .v{font-size:16px;font-weight:700;margin-top:3px;}
-  .refblock{margin-bottom:14px;}
-  .refcap{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:7px;}
-  .refcap .sb-hint{display:inline;font-weight:600;text-transform:none;letter-spacing:0;margin:0;}
-  .refsub{font-size:12px;color:var(--muted);margin-top:3px;}
-  .refbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
-  .refbtn{background:var(--panel-b);border:1px solid var(--border);border-radius:var(--radius-ctl);padding:7px 12px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;}
-  .refbtn:hover{border-color:var(--acc);}
-  .csvbtn{background:var(--panel-b);border:1px solid var(--border);border-radius:var(--radius-ctl);padding:7px 12px;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;align-self:flex-end;}
-  .csvbtn:hover{border-color:var(--acc);}
 
   /* Ranked bars */
   .rrow{margin:10px 0;}
@@ -296,9 +287,9 @@
 
   /* Sandbox */
   .sb-out{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:6px;}
-  .sb-cell{min-width:0;background:var(--panel-b);border:1px solid var(--border);border-radius:12px;padding:14px;}
+  .sb-cell{background:var(--panel-b);border:1px solid var(--border);border-radius:12px;padding:14px;}
   .sb-cell .k{font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;}
-  .sb-cell .v{font-size:21px;font-weight:700;margin-top:6px;overflow-wrap:break-word;}
+  .sb-cell .v{font-size:21px;font-weight:700;margin-top:6px;}
   .sb-cell .v.small{font-size:16px;}
   input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:5px;border-radius:5px;background:var(--border);outline:none;margin:10px 0 4px;}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:var(--acc);cursor:pointer;border:3px solid var(--surface);box-shadow:0 0 0 1px var(--acc);}
@@ -328,7 +319,6 @@
   .tabview.hidden{display:none;}
   .sres-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;}
   .sres-item{
-    min-width:0;
     background:var(--surface);
     border:1px solid var(--border); border-radius:var(--radius-card); padding:14px;
     cursor:pointer; transition:border-color .15s; box-shadow:var(--shadow);
@@ -390,8 +380,6 @@
   .ledger-filter{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
   .ledger-filter .ctl-row{flex:1 1 200px;min-width:160px;}
   .ledger-count{font-size:12px;color:var(--muted);margin-bottom:10px;}
-  /* Let description cells wrap and breathe instead of forcing horizontal scroll. */
-  th.col-desc,td.col-desc{white-space:normal;min-width:220px;max-width:360px;text-align:left;line-height:1.4;}
 
   .foot{display:none;}
 
@@ -428,15 +416,12 @@
     .wrap{padding:16px 16px 48px;}
     .mainbar h1{display:none;}
     .kpis{grid-template-columns:repeat(2,1fr);gap:10px;}
-    .kpi .val{font-size:clamp(14px,4.4vw,20px);}
+    .kpi .val{font-size:21px;}
     .card{padding:15px;}
     .sec-title{margin:22px 2px 10px;}
     .chart-controls{gap:12px;}
     .ctl-row.grow{flex-basis:100%;}
     .sres-grid{grid-template-columns:1fr;}
-    select.dd, input.inp{min-height:44px;}
-    .refbtn{min-height:44px;}
-    .csvbtn{min-height:44px;}
   }
   @media(max-width:380px){
     .kpis{grid-template-columns:1fr;}
@@ -544,87 +529,8 @@ function prodName(p){
   return p.name || [p.setName,p.language,p.type].filter(Boolean).join(" ") || ("Product "+(p.productId||"?"));
 }
 
-/* ---------- CSV export helpers ---------- */
-function csvCell(v){
-  if(v==null) v="";
-  v=String(v);
-  return /[",\n\r]/.test(v) ? ('"'+v.replace(/"/g,'""')+'"') : v;
-}
-function toCSV(headers, rows){
-  var out=headers.map(csvCell).join(",")+"\r\n";
-  out+=rows.map(function(r){ return r.map(csvCell).join(","); }).join("\r\n");
-  return out;
-}
-function csvStamp(){
-  // YYYY-MM-DD for filenames; fall back to today.
-  var d=(D&&D.generatedAt)?String(D.generatedAt).slice(0,10):"";
-  if(!/^\d{4}-\d{2}-\d{2}$/.test(d)){ var t=new Date(); d=t.getFullYear()+"-"+("0"+(t.getMonth()+1)).slice(-2)+"-"+("0"+t.getDate()).slice(-2); }
-  return d;
-}
-function downloadCSV(filename, csv){
-  var blob=new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8;"});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement("a");
-  a.href=url; a.download=filename; a.style.display="none";
-  document.body.appendChild(a); a.click();
-  setTimeout(function(){ if(a.parentNode) a.parentNode.removeChild(a); URL.revokeObjectURL(url); }, 0);
-}
-
 /* ---------- top-level data (populated in boot) ---------- */
 var pnl={}, bal={}, products=[], monthly=[], opex=[], capital=[], cashflow={};
-
-/* ---------- Reference price book (edit here to update prices) ----------
-   Each entry: set keywords (any-match, lowercase, tested against the product
-   name), kind, supplier price, end-user price. Matched onto products at boot. */
-var PRICE_BOOK = [
-  // PACKS
-  { label:"Ascended Heroes — Pack",     set:["ascended heroes","ascended"], kind:"pack",   supplier:265000,  endUser:280000  },
-  { label:"Pokémon 151 — Pack",          set:["151"],                        kind:"pack",   supplier:540000,  endUser:570000  },
-  { label:"Phantasmal Evolution — Pack", set:["phantasmal"],                 kind:"pack",   supplier:245000,  endUser:260000  },
-  { label:"Paldean Fates — Pack",        set:["paldean fates","paldean"],    kind:"pack",   supplier:375000,  endUser:390000  },
-  { label:"Journey Together — Pack",     set:["journey together","journey"], kind:"pack",   supplier:120000,  endUser:130000  },
-  { label:"Surging Sparks — Pack",       set:["surging sparks","surging"],   kind:"pack",   supplier:160000,  endUser:170000  },
-  { label:"Chaos Rising — Pack",         set:["chaos rising","chaos"],       kind:"pack",   supplier:155000,  endUser:165000  },
-  { label:"Mega Dream — Pack",           set:["mega dream"],                 kind:"pack",   supplier:150000,  endUser:160000  },
-  { label:"Ninja Spinner — Pack",        set:["ninja spinner"],              kind:"pack",   supplier:55000,   endUser:60000   },
-  // BUNDLES
-  { label:"Pokémon 151 — Bundle",        set:["151"],                        kind:"bundle", supplier:3870000, endUser:4000000 },
-  { label:"Prismatic Evolution — Bundle",set:["prismatic"],                  kind:"bundle", supplier:1850000, endUser:1900000 },
-  { label:"Phantasmal Evolution — Bundle",set:["phantasmal"],                kind:"bundle", supplier:1700000, endUser:1800000 },
-  { label:"Ascended Heroes — Bundle",    set:["ascended heroes","ascended"], kind:"bundle", supplier:1850000, endUser:2000000 },
-  // BOXES
-  { label:"Chaos Rising — Case",         set:["chaos rising","chaos"],       kind:"case",   supplier:31000000,endUser:34000000},
-  { label:"Prismatic Evolution — ETB",   set:["prismatic"],                  kind:"etb",    supplier:3750000, endUser:3850000 },
-  { label:"Prismatic Evolution — Costco",set:["prismatic"],                  kind:"costco", supplier:5600000, endUser:5700000 }
-];
-function hasWord(hay,term){
-  // Whole-word/token match so generic substrings (e.g. "case" in "showcase",
-  // or a SKU containing "151") can't cause a false price match.
-  term=String(term||"").toLowerCase().trim();
-  if(!term) return false;
-  var safe=term.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");
-  return new RegExp("\\b"+safe+"\\b").test(hay);
-}
-function productKind(p){
-  var hay=((prodName(p)||"")+" "+(p.type||"")+" "+(p.setName||"")).toLowerCase();
-  if(hasWord(hay,"costco")) return "costco";
-  if(hasWord(hay,"case")) return "case";
-  if(hasWord(hay,"etb") || hasWord(hay,"elite trainer")) return "etb";
-  if(hasWord(hay,"bundle")) return "bundle";
-  return "pack";
-}
-function matchPriceBook(p){
-  var kind=productKind(p);
-  var hay=((prodName(p)||"")+" "+(p.type||"")+" "+(p.setName||"")).toLowerCase();
-  for(var i=0;i<PRICE_BOOK.length;i++){
-    var e=PRICE_BOOK[i];
-    if(e.kind!==kind) continue;
-    for(var j=0;j<e.set.length;j++){
-      if(hasWord(hay,e.set[j])) return e;
-    }
-  }
-  return null;
-}
 
 /* ===================== TABS / NAV ===================== */
 const TABS = [
@@ -820,10 +726,8 @@ function renderModal(){
 }
 
 /* ===================== SALES (per product) ===================== */
-var salesState = { product:"all", buyer:"all", q:"" };
-
-function salesTable(p,subset){
-  var sales=(subset!=null)?subset:arr(p.sales);
+function salesTable(p){
+  var sales=arr(p.sales);
   if(!sales.length) return '<div class="empty">No sales recorded for this product.</div>';
   var rows=sales.map(function(s){
     return '<tr><td>'+esc(s.date||"—")+'</td>'
@@ -840,193 +744,27 @@ function salesTable(p,subset){
     +'<th>Date</th><th>Buyer</th><th>Loc</th><th>Qty</th><th>Unit</th><th>Total</th><th>COGS</th><th>Profit</th><th>Margin</th>'
     +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
-function salesTotals(t){
-  // t = { units, revenue, gross, margin }  (precomputed from product or filtered rows)
+function salesTotals(p){
   return '<div class="ttotals">'
-    +'<div class="ttotal"><div class="t">Units sold</div><div class="v num">'+num(t.units)+'</div></div>'
-    +'<div class="ttotal"><div class="t">Revenue</div><div class="v num">'+money(t.revenue)+'</div></div>'
-    +'<div class="ttotal"><div class="t">Gross profit</div><div class="v num '+marginClass(t.margin)+'">'+money(t.gross)+'</div></div>'
-    +'<div class="ttotal"><div class="t">Margin</div><div class="v num '+marginClass(t.margin)+'">'+pct(t.margin)+'</div></div>'
+    +'<div class="ttotal"><div class="t">Units sold</div><div class="v num">'+num(p.unitsSold)+'</div></div>'
+    +'<div class="ttotal"><div class="t">Revenue</div><div class="v num">'+money(p.revenue)+'</div></div>'
+    +'<div class="ttotal"><div class="t">Gross profit</div><div class="v num '+marginClass(p.marginPct)+'">'+money(p.grossProfit)+'</div></div>'
+    +'<div class="ttotal"><div class="t">Margin</div><div class="v num '+marginClass(p.marginPct)+'">'+pct(p.marginPct)+'</div></div>'
     +'</div>';
-}
-function refPriceCell(title,price,landed){
-  var profit=price-landed;
-  var margin=(price>0?((price-landed)/price*100):null);
-  var marginTxt=(margin!=null)?('<span class="'+marginClass(margin)+'">'+pct(margin)+'</span>'):'—';
-  var profCls=(profit>=0?'pos':'neg');
-  return '<div class="ttotal"><div class="t">'+esc(title)+'</div>'
-    +'<div class="v num">'+money(price)+'</div>'
-    +'<div class="refsub"><span class="'+profCls+'">'+(profit>=0?'+':'')+money(profit)+'</span> / unit · '+marginTxt+'</div></div>';
-}
-function refPricingBlock(p){
-  var hasSup=(p.refSupplier!=null), hasEnd=(p.refEndUser!=null);
-  if(!hasSup && !hasEnd) return "";
-  var landed=+p.modalLanded||0;
-  var cells="";
-  if(hasSup) cells+=refPriceCell("Supplier price",+p.refSupplier,landed);
-  if(hasEnd) cells+=refPriceCell("End-user price",+p.refEndUser,landed);
-  return '<div class="refblock"><div class="refcap">Reference pricing'
-    +(p.refLabel?(' — '+esc(p.refLabel)):'')
-    +' <span class="sb-hint">vs landed cost '+money(landed)+'</span></div>'
-    +'<div class="ttotals">'+cells+'</div></div>';
-}
-function salesTotalsFromRows(rows){
-  var units=0, revenue=0, gross=0;
-  arr(rows).forEach(function(s){
-    units+=(+s.qty||0); revenue+=(+s.total||0); gross+=(+s.profit||0);
-  });
-  return { units:units, revenue:revenue, gross:gross, margin:(revenue>0?(gross/revenue*100):null) };
-}
-function salesBuyers(){
-  // distinct, sorted, non-blank buyers across all sales
-  var seen={};
-  products.forEach(function(p){
-    arr(p.sales).forEach(function(s){
-      var b=(s&&s.buyer)?String(s.buyer).trim():"";
-      if(b) seen[b]=true;
-    });
-  });
-  return Object.keys(seen).sort();
 }
 function renderSales(){
   if(!products.length){ el("sec-sales").innerHTML='<div class="empty">No products.</div>'; return; }
-  var prodOpts='<option value="all">All products</option>'+products.map(function(p){
-    return '<option value="'+esc(p.productId)+'">'+esc(prodName(p))+'</option>';
-  }).join("");
-  var buyerOpts='<option value="all">All buyers</option>'+salesBuyers().map(function(b){
-    return '<option value="'+esc(b)+'">'+esc(b)+'</option>';
-  }).join("");
-  var html='<div class="sec-title">Sales — tap a product to drill in</div>'
-    +'<div class="card">'
-      +'<div class="ledger-filter">'
-        +'<div class="ctl-row"><span class="ctl-lbl">Product</span>'
-          +'<select class="dd" id="salesProduct">'+prodOpts+'</select></div>'
-        +'<div class="ctl-row"><span class="ctl-lbl">Buyer</span>'
-          +'<select class="dd" id="salesBuyer">'+buyerOpts+'</select></div>'
-        +'<div class="ctl-row grow"><span class="ctl-lbl">Search</span>'
-          +'<input class="inp" id="salesSearch" type="search" inputmode="search" autocomplete="off" placeholder="product, buyer, location…"></div>'
-        +'<button class="csvbtn" id="salesExportBtn" type="button">⬇ Export CSV</button>'
-        +'<button class="csvbtn" id="productsExportBtn" type="button">⬇ Export products</button>'
-      +'</div>'
-      +'<div class="ledger-count" id="salesCount"></div>'
-      +'<div id="salesList"></div>'
-    +'</div>';
-  el("sec-sales").innerHTML=html;
-
-  // wire filter controls
-  var prodSel=el("salesProduct"), buyerSel=el("salesBuyer"), srch=el("salesSearch");
-  if(prodSel){ prodSel.value=salesState.product; prodSel.addEventListener("change",function(e){ salesState.product=e.target.value; refreshSales(); }); }
-  if(buyerSel){ buyerSel.value=salesState.buyer; buyerSel.addEventListener("change",function(e){ salesState.buyer=e.target.value; refreshSales(); }); }
-  if(srch){ srch.value=salesState.q; srch.addEventListener("input",function(e){ salesState.q=e.target.value; refreshSales(); }); }
-  var salesExp=el("salesExportBtn");
-  if(salesExp){ salesExp.addEventListener("click",function(){ downloadCSV("pokehit-sales-"+csvStamp()+".csv", toCSV(SALES_CSV_HEADERS, salesExportRows())); }); }
-  var prodExp=el("productsExportBtn");
-  if(prodExp){ prodExp.addEventListener("click",function(){ downloadCSV("pokehit-products-"+csvStamp()+".csv", toCSV(PRODUCTS_CSV_HEADERS, productsExportRows())); }); }
-  refreshSales();
-}
-// Shared row-level filter predicate used by both the Sales display and the CSV export,
-// so they always stay consistent. buyer + search q over product name + buyer + loc.
-function salesRowMatch(s, nmLc, buyer, q){
-  if(buyer!=="all" && (s&&s.buyer?String(s.buyer).trim():"")!==buyer) return false;
-  if(q){
-    var hay=(nmLc+" "+((s&&s.buyer)||"")+" "+((s&&s.loc)||"")).toLowerCase();
-    if(hay.indexOf(q)<0) return false;
-  }
-  return true;
-}
-// Per-row margin: explicit marginPct field, else profit/total*100; rounded to 1 decimal.
-function salesRowMargin(s){
-  var m=(s&&s.marginPct!=null)?+s.marginPct:((+s.total||0)>0?((+s.profit||0)/(+s.total||1)*100):null);
-  if(m==null||isNaN(m)) return "";
-  return Math.round(m*10)/10;
-}
-// FLAT export rows applying the SAME filters as refreshSales (product at card level;
-// buyer + search at row level). Returns array of value arrays.
-function salesExportRows(){
-  var buyer=(salesState.buyer||"all");
-  var q=(salesState.q||"").trim().toLowerCase();
-  var out=[];
-  products.filter(function(p){
-    return salesState.product==="all" || String(p.productId)===String(salesState.product);
-  }).forEach(function(p){
-    var nm=prodName(p);
-    var nmLc=nm.toLowerCase();
-    arr(p.sales).forEach(function(s){
-      if(!salesRowMatch(s, nmLc, buyer, q)) return;
-      var qty=+s.qty||0;
-      var total=+s.total||0;
-      var unitPrice=(s.unitPrice!=null)?+s.unitPrice:(qty>0?total/qty:0);
-      out.push([
-        nm,
-        s.date?String(s.date).slice(0,10):"",
-        s.buyer||"",
-        s.loc||"",
-        qty,
-        Math.round(unitPrice),
-        Math.round(total),
-        Math.round(+s.cogs||0),
-        Math.round(+s.profit||0),
-        salesRowMargin(s)
-      ]);
-    });
-  });
-  return out;
-}
-var SALES_CSV_HEADERS=["Product","Date","Buyer","Location","Qty","Unit Price","Total","COGS","Profit","Margin %"];
-var PRODUCTS_CSV_HEADERS=["Product","In Warehouse","In Store","In Transit","On Order","Units Sold","Revenue","Gross Profit","Margin %","Landed Modal","Supplier Price","End-User Price"];
-// One row per product summary. Numeric fields as numbers; blank when null/undefined.
-function productsExportRows(){
-  function n(v){ return (v==null||isNaN(+v)) ? "" : Math.round(+v); }
-  function m(v){ return (v==null||isNaN(+v)) ? "" : Math.round(+v*10)/10; }
-  return products.map(function(p){
-    return [
-      prodName(p),
-      n(p.inWarehouse), n(p.inStore), n(p.inTransit), n(p.onOrder),
-      n(p.unitsSold), n(p.revenue), n(p.grossProfit), m(p.marginPct),
-      n(p.modalLanded), n(p.refSupplier), n(p.refEndUser)
-    ];
-  });
-}
-function refreshSales(){
-  var list=el("salesList"); if(!list) return;
-  var buyer=(salesState.buyer||"all");
-  var q=(salesState.q||"").trim().toLowerCase();
-  var rowFilterActive=(buyer!=="all") || (q!=="");
-
-  var prodCount=0, saleCount=0;
-  var html=products.filter(function(p){
-    return salesState.product==="all" || String(p.productId)===String(salesState.product);
-  }).map(function(p){
-    var nm=prodName(p);
-    var nmLc=nm.toLowerCase();
-    var rows=arr(p.sales).filter(function(s){
-      return salesRowMatch(s, nmLc, buyer, q);
-    });
-    if(rowFilterActive && !rows.length) return ""; // hide cards with zero matching rows
-
-    prodCount++; saleCount+=rows.length;
-
-    // Honest totals: recompute from visible rows when a row-level filter is active.
-    var totals = rowFilterActive
-      ? salesTotalsFromRows(rows)
-      : { units:p.unitsSold, revenue:p.revenue, gross:p.grossProfit, margin:p.marginPct };
-
+  var html='<div class="sec-title">Sales — tap a product to drill in</div>';
+  html += products.map(function(p){
     return '<div class="card pcard" id="sales-'+esc(p.productId)+'">'
-      +'<div class="pname">🎴 '+esc(nm)+' <span class="chev">▶</span></div>'
-      +'<div class="pmeta">'+num(totals.units)+' sold · '+money(totals.revenue)+' rev · '
-        +'<span class="'+marginClass(totals.margin)+'">'+pct(totals.margin)+'</span></div>'
-      +'<div class="detail">'+salesTotals(totals)+refPricingBlock(p)+salesTable(p,rowFilterActive?rows:null)+'</div>'
+      +'<div class="pname">🎴 '+esc(prodName(p))+' <span class="chev">▶</span></div>'
+      +'<div class="pmeta">'+num(p.unitsSold)+' sold · '+money(p.revenue)+' rev · '
+        +'<span class="'+marginClass(p.marginPct)+'">'+pct(p.marginPct)+'</span></div>'
+      +'<div class="detail">'+salesTotals(p)+salesTable(p)+'</div>'
     +'</div>';
   }).join("");
-
-  var cnt=el("salesCount");
-  if(cnt) cnt.textContent = num(prodCount)+(prodCount===1?" product · ":" products · ")+num(saleCount)+(saleCount===1?" sale":" sales");
-
-  if(!prodCount){ list.innerHTML='<div class="empty">No sales match.</div>'; return; }
-  list.innerHTML=html;
-
-  // Re-wire expand/collapse after every re-render (jumpToProduct relies on these cards existing).
-  Array.prototype.forEach.call(list.querySelectorAll(".pcard"),function(c){
+  el("sec-sales").innerHTML=html;
+  Array.prototype.forEach.call(el("sec-sales").querySelectorAll(".pcard"),function(c){
     c.addEventListener("click",function(){ toggle(c); });
   });
 }
@@ -1609,7 +1347,7 @@ var ALLOC_COLORS = {
 };
 function allocColor(bucket){ return ALLOC_COLORS[bucket] || "var(--muted)"; }
 
-var exLedgerState = { cat:"all", q:"", sort:"date_desc" };
+var exLedgerState = { cat:"all", q:"" };
 
 function renderExpenses(){
   var sec=el("sec-expenses");
@@ -1706,10 +1444,10 @@ function renderExpenses(){
       return '<tr><td>'+esc(r.date||"—")+'</td>'
         +'<td>'+esc(r.counterparty||"—")+'</td>'
         +'<td class="num">'+money(Math.abs(+r.amount||0))+'</td>'
-        +'<td class="col-desc">'+esc(r.desc||"—")+'</td></tr>';
+        +'<td>'+esc(r.desc||"—")+'</td></tr>';
     }).join("");
     var tx = txRows.length
-      ? '<div class="tscroll"><table class="compact"><thead><tr><th>Date</th><th>Counterparty</th><th>Amount</th><th class="col-desc">Description</th></tr></thead><tbody>'+txBody+'</tbody></table></div>'
+      ? '<div class="tscroll"><table class="compact"><thead><tr><th>Date</th><th>Counterparty</th><th>Amount</th><th>Description</th></tr></thead><tbody>'+txBody+'</tbody></table></div>'
       : '<div class="empty">No matching transactions.</div>';
     return '<div class="opx" data-opx="1">'
       +'<div class="opx-head"><span class="opx-name"><span class="chev">▶</span>'+esc(cat||"—")+'</span>'
@@ -1736,17 +1474,8 @@ function renderExpenses(){
      +'<div class="ledger-filter">'
        +'<div class="ctl-row"><span class="ctl-lbl">Category</span>'
          +'<select class="dd" id="exLedgerCat">'+catOpts+'</select></div>'
-       +'<div class="ctl-row"><span class="ctl-lbl">Sort</span>'
-         +'<select class="dd" id="exLedgerSort">'
-           +'<option value="date_desc">Newest first</option>'
-           +'<option value="date_asc">Oldest first</option>'
-           +'<option value="amt_desc">Amount: high → low</option>'
-           +'<option value="amt_asc">Amount: low → high</option>'
-           +'<option value="cat_asc">Category (A–Z)</option>'
-         +'</select></div>'
        +'<div class="ctl-row grow"><span class="ctl-lbl">Search</span>'
          +'<input class="inp" id="exLedgerSearch" type="search" inputmode="search" autocomplete="off" placeholder="counterparty, description…"></div>'
-       +'<button class="csvbtn" id="exLedgerExportBtn" type="button">⬇ Export CSV</button>'
      +'</div>'
      +'<div class="ledger-count" id="exLedgerCount"></div>'
      +'<div id="exLedgerTable"></div>'
@@ -1760,38 +1489,21 @@ function renderExpenses(){
   });
 
   // wire (D) filter + search
-  var catSel=el("exLedgerCat"), sortSel=el("exLedgerSort"), srch=el("exLedgerSearch");
+  var catSel=el("exLedgerCat"), srch=el("exLedgerSearch");
   if(catSel){ catSel.value=exLedgerState.cat; catSel.addEventListener("change",function(e){ exLedgerState.cat=e.target.value; refreshExLedger(); }); }
-  if(sortSel){ sortSel.value=exLedgerState.sort; sortSel.addEventListener("change",function(e){ exLedgerState.sort=e.target.value; refreshExLedger(); }); }
   if(srch){ srch.value=exLedgerState.q; srch.addEventListener("input",function(e){ exLedgerState.q=e.target.value; refreshExLedger(); }); }
-  var exExp=el("exLedgerExportBtn");
-  if(exExp){ exExp.addEventListener("click",function(){ downloadCSV("pokehit-expenses-"+csvStamp()+".csv", toCSV(EXPENSES_CSV_HEADERS, exLedgerExportRows())); }); }
   refreshExLedger();
 }
-// Filtered + sorted outflow rows. Shared by the ledger table and the CSV export
-// so the two always match. Returns the exact array refreshExLedger renders.
-function exLedgerFilteredRows(){
+function refreshExLedger(){
+  var tbl=el("exLedgerTable"); if(!tbl) return;
   var cf = cashflow || {};
   // Global search box should also filter the ledger.
   var globalQ="";
   var gs=el("searchD")||el("searchM"); if(gs) globalQ=(gs.value||"").trim().toLowerCase();
   var localQ=(exLedgerState.q||"").trim().toLowerCase();
   var rows=arr(cf.outflowRows).slice();
-  // sort per exLedgerState.sort (default: newest first)
-  var sortBy=exLedgerState.sort||"date_desc";
-  rows.sort(function(a,b){
-    var ad=a.date||"", bd=b.date||"";
-    var aa=Math.abs(+a.amount||0), ba=Math.abs(+b.amount||0);
-    switch(sortBy){
-      case "date_asc": return (ad<bd?-1:ad>bd?1:0);
-      case "amt_desc": return ba-aa;
-      case "amt_asc": return aa-ba;
-      case "cat_asc":
-        var ac=(a.category||"").toLowerCase(), bc=(b.category||"").toLowerCase();
-        return (ac<bc?-1:ac>bc?1:0);
-      default: return (ad<bd?1:ad>bd?-1:0); // date_desc
-    }
-  });
+  // newest first
+  rows.sort(function(a,b){ return (a.date<b.date?1:a.date>b.date?-1:0); });
   rows=rows.filter(function(r){
     if(exLedgerState.cat!=="all" && (r.category||"")!==exLedgerState.cat) return false;
     function hit(q){
@@ -1801,23 +1513,6 @@ function exLedgerFilteredRows(){
     }
     return hit(localQ) && hit(globalQ);
   });
-  return rows;
-}
-var EXPENSES_CSV_HEADERS=["Date","Category","Counterparty","Amount","Description"];
-function exLedgerExportRows(){
-  return exLedgerFilteredRows().map(function(r){
-    return [
-      r.date?String(r.date).slice(0,10):"",
-      r.category||"",
-      r.counterparty||"",
-      Math.abs(+r.amount||0),
-      r.desc||""
-    ];
-  });
-}
-function refreshExLedger(){
-  var tbl=el("exLedgerTable"); if(!tbl) return;
-  var rows=exLedgerFilteredRows();
   var cnt=el("exLedgerCount");
   if(cnt) cnt.textContent = num(rows.length)+(rows.length===1?" transaction":" transactions");
   if(!rows.length){ tbl.innerHTML='<div class="empty">No transactions match.</div>'; return; }
@@ -1826,10 +1521,10 @@ function refreshExLedger(){
       +'<td>'+esc(r.category||"—")+'</td>'
       +'<td>'+esc(r.counterparty||"—")+'</td>'
       +'<td class="num neg">'+money(Math.abs(+r.amount||0))+'</td>'
-      +'<td class="col-desc">'+esc(r.desc||"—")+'</td></tr>';
+      +'<td>'+esc(r.desc||"—")+'</td></tr>';
   }).join("");
   tbl.innerHTML='<div class="tscroll"><table><thead><tr>'
-    +'<th>Date</th><th>Category</th><th>Counterparty</th><th>Amount</th><th class="col-desc">Description</th>'
+    +'<th>Date</th><th>Category</th><th>Counterparty</th><th>Amount</th><th>Description</th>'
     +'</tr></thead><tbody>'+body+'</tbody></table></div>';
 }
 
@@ -1853,7 +1548,6 @@ function renderSandbox(){
      +'<div class="ctl-row" style="margin-bottom:10px;"><span class="ctl-lbl">Product</span>'
        +'<select class="dd" id="sbProduct">'+prodOpts+'</select></div>'
      +'<div id="sbBasis" class="sb-hint" style="margin-bottom:8px;"></div>'
-     +'<div id="sbRefBtns" class="refbtns"></div>'
      +'<div class="ctl-row"><span class="ctl-lbl">Sell price per unit</span>'
        +'<input class="inp" id="sbPriceN" type="number" inputmode="numeric" min="0" step="1000">'
        +'<input id="sbPriceR" type="range" min="0" step="1000">'
@@ -1872,15 +1566,7 @@ function renderSandbox(){
        +'<input id="sbTgtR" type="range" min="0" max="95" step="1">'
        +'<div class="sb-hint">Required sell price = landed cost ÷ (1 − margin).</div></div>'
      +'<div class="sb-out" id="sbTgtOut" style="grid-template-columns:repeat(2,1fr);"></div>'
-   +'</div>'
-   +'<div id="sbUnmatched" class="sb-hint" style="margin-top:4px;"></div>';
-
-  // Verification surface: products with no PRICE_BOOK match.
-  var unmatched=products.filter(function(p){ return p.refSupplier==null && p.refEndUser==null; })
-    .map(function(p){ return prodName(p); });
-  if(unmatched.length){
-    el("sbUnmatched").innerHTML='No reference price matched: '+esc(unmatched.join(", "));
-  }
+   +'</div>';
 
   // init defaults from first product
   function loadDefaults(){
@@ -1895,31 +1581,7 @@ function renderSandbox(){
     el("sbQtyN").value=defQty; el("sbQtyR").max=qtyMax; el("sbQtyR").value=defQty;
     el("sbBasis").innerHTML='Cost basis (landed): <b>'+money(landed)+'</b> / unit'
       +(p.retailPrice?(' · retail '+money(p.retailPrice)):'')
-      +(p.supplierPrice?(' · supplier '+money(p.supplierPrice)):'')
-      +((p.refSupplier!=null||p.refEndUser!=null)
-          ? ('<br>Reference:'
-              +(p.refSupplier!=null?(' Supplier '+money(p.refSupplier)):'')
-              +(p.refSupplier!=null&&p.refEndUser!=null?' ·':'')
-              +(p.refEndUser!=null?(' End-user '+money(p.refEndUser)):''))
-          : '');
-    refRefButtons();
-  }
-  // Build quick-fill reference buttons for the current product.
-  function refRefButtons(){
-    var p=sbProduct(), box=el("sbRefBtns"); if(!box) return;
-    var html="";
-    if(p.refSupplier!=null) html+='<button type="button" class="refbtn" data-refprice="'+(+p.refSupplier)+'">Use supplier price</button>';
-    if(p.refEndUser!=null)  html+='<button type="button" class="refbtn" data-refprice="'+(+p.refEndUser)+'">Use end-user price</button>';
-    box.innerHTML=html;
-    Array.prototype.forEach.call(box.querySelectorAll(".refbtn"),function(b){
-      b.addEventListener("click",function(){
-        var v=+b.getAttribute("data-refprice")||0;
-        sbState.price=v;
-        if(+el("sbPriceR").max < v) el("sbPriceR").max=v;
-        el("sbPriceN").value=v; el("sbPriceR").value=v;
-        recalc();
-      });
-    });
+      +(p.supplierPrice?(' · supplier '+money(p.supplierPrice)):'');
   }
   function recalc(){
     var p=sbProduct();
@@ -2054,9 +1716,6 @@ function jumpToProduct(pid){
   el("searchResults").innerHTML="";
   el("tabview").classList.remove("hidden");
   setTabSilent("sales");
-  // Clear any active sales-tab filters so the target product card is guaranteed to render.
-  salesState.product="all"; salesState.buyer="all"; salesState.q="";
-  renderSales();
   var card=el("sales-"+pid);
   if(card){
     card.classList.add("open");
@@ -2065,31 +1724,9 @@ function jumpToProduct(pid){
 }
 function setTabSilent(name){ syncNav(name); }
 
-/* ===================== AUTH STORAGE ===================== */
-/* Keep the login token in localStorage so the session survives tab/app/browser
-   restarts — you stay signed in until you explicitly sign out. Migrates any
-   token left behind by the older session-only version. */
-var AUTH_KEY="pokehit_auth";
-function authGet(){
-  var t="";
-  try{ t=(localStorage.getItem(AUTH_KEY)||"").trim(); }catch(e){}
-  if(!t){
-    try{
-      var s=(sessionStorage.getItem(AUTH_KEY)||"").trim();
-      if(s){ t=s; try{ localStorage.setItem(AUTH_KEY,s); sessionStorage.removeItem(AUTH_KEY); }catch(e){} }
-    }catch(e){}
-  }
-  return t;
-}
-function authSet(token){ try{ localStorage.setItem(AUTH_KEY, token); }catch(e){} }
-function authClear(){
-  try{ localStorage.removeItem(AUTH_KEY); }catch(e){}
-  try{ sessionStorage.removeItem(AUTH_KEY); }catch(e){}
-}
-
 /* ===================== FOOTER ===================== */
 function signOut(){
-  authClear();
+  try{ sessionStorage.removeItem("pokehit_auth"); }catch(e){}
   location.reload();
 }
 function renderFoot(){
@@ -2107,12 +1744,6 @@ function renderFoot(){
 function boot(){
   pnl = D.pnl||{}; bal = D.balance||{};
   products = arr(D.products);
-  products.forEach(function(p){
-    var m=matchPriceBook(p);
-    p.refSupplier = m ? m.supplier : undefined;
-    p.refEndUser  = m ? m.endUser  : undefined;
-    p.refLabel    = m ? m.label    : undefined;
-  });
   monthly = arr(D.monthly);
   opex = arr(D.opex);
   capital = arr(D.capital);
@@ -2179,7 +1810,7 @@ var D = {};
       if(btn){ btn.disabled=true; btn.textContent="Signing in…"; }
       fetchData(token)
         .then(function(json){
-          authSet(token);
+          try{ sessionStorage.setItem("pokehit_auth", token); }catch(e){}
           launch(json);
         })
         .catch(function(err){
@@ -2196,7 +1827,8 @@ var D = {};
   wireLogin();
 
   // Try a saved token first.
-  var saved=authGet();
+  var saved="";
+  try{ saved=(sessionStorage.getItem("pokehit_auth")||"").trim(); }catch(e){}
 
   if(saved){
     showGate();
@@ -2204,7 +1836,7 @@ var D = {};
       .then(function(json){ launch(json); })
       .catch(function(err){
         if(err && err.code===401){
-          authClear();
+          try{ sessionStorage.removeItem("pokehit_auth"); }catch(e){}
           showLogin();
         } else {
           // Network/server error with a saved token: fall back to the login screen
