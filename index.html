@@ -967,7 +967,9 @@ function batchTable(p){
   }
   var rows=batches.map(function(b){
     var histTag = b && b.historical ? ' <span style="font-size:10px;color:var(--muted);">(last known)</span>' : '';
+    var src = b.invoiceId ? ('🧾 #'+b.invoiceId+(b.supplier?(' · '+esc(b.supplier)):'')) : '—';
     return '<tr><td>'+esc(b.label||("#"+(b.shipmentId||"")))+histTag+'</td>'
+      +'<td style="text-align:left;white-space:nowrap;">'+src+'</td>'
       +'<td>'+esc(b.date||"—")+'</td>'
       +'<td class="num">'+num(b.qtyRemaining)+'</td>'
       +'<td class="num">'+money(b.buyPerUnit)+'</td>'
@@ -975,7 +977,7 @@ function batchTable(p){
       +'<td class="num">'+money(b.landedPerUnit)+'</td></tr>';
   }).join("");
   return '<div class="tscroll"><table><thead><tr>'
-    +'<th>Batch</th><th>Date</th><th>Qty left</th><th>Buy/u</th><th>Ship+fee/u</th><th>Landed/u</th>'
+    +'<th>Batch</th><th>From invoice</th><th>Date</th><th>Qty left</th><th>Buy/u</th><th>Ship+fee/u</th><th>Landed/u</th>'
     +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 function renderModal(){
