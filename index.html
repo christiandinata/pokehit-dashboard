@@ -2596,7 +2596,7 @@ MG.sales = {
         +'<div id="mgNsPlan" class="mg-plan" style="display:none;"></div>'
         +'<div class="mg-grid2">'
           +MG.f.num("mgNsPrice","Unit price (IDR)","",1000)
-          +MG.f.num("mgNsTotal","Total (IDR) — auto","",1000)
+          +MG.f.num("mgNsTotal","Total (IDR)","",1000)
         +'</div>'
         +MG.f.text("mgNsCust","Customer","","optional")
         +MG.f.picks("mgNsCh","Channel",chans,"manual")
@@ -2606,12 +2606,16 @@ MG.sales = {
         +'<button class="mg-btn primary" id="mgNsSave" type="button">Record sale</button></div>'
       +'</div>',
       onMount:function(body, close){
-        var totalTouched=false, planTimer=null;
+        var lastEdited="price", planTimer=null;
         function qty(){ return Math.max(0, MG.parseMoney(MG.v(body,"mgNsQty"))); }
         function price(){ return MG.parseMoney(MG.v(body,"mgNsPrice")); }
-        function syncTotal(){
-          if(totalTouched) return;
-          body.querySelector("#mgNsTotal").value = qty()*price() || "";
+        function total(){ return MG.parseMoney(MG.v(body,"mgNsTotal")); }
+        // Bidirectional: type unit price → total = qty×price; type total →
+        // unit price = total/qty. Changing quantity recomputes the derived side.
+        function sync(){
+          var q=qty();
+          if(lastEdited==="total") body.querySelector("#mgNsPrice").value = (q>0 ? Math.round(total()/q) : "") || "";
+          else body.querySelector("#mgNsTotal").value = (q>0 ? q*price() : "") || "";
         }
         function plan(){
           var pid=MG.pickerVal(body,"mgNsProd"), q=qty(), loc=MG.pickVal(body,"mgNsLoc");
@@ -2635,14 +2639,14 @@ MG.sales = {
           },250);
         }
         MG.wirePicker(body,"mgNsProd",function(p){
-          if(p.sale_price_idr && !price()){ body.querySelector("#mgNsPrice").value=p.sale_price_idr; syncTotal(); }
+          if(p.sale_price_idr && !price()){ body.querySelector("#mgNsPrice").value=p.sale_price_idr; lastEdited="price"; sync(); }
           plan();
         });
         MG.wirePicks(body,"mgNsLoc",plan);
         MG.wirePicks(body,"mgNsCh");
-        body.querySelector("#mgNsQty").addEventListener("input",function(){ syncTotal(); plan(); });
-        body.querySelector("#mgNsPrice").addEventListener("input",syncTotal);
-        body.querySelector("#mgNsTotal").addEventListener("input",function(){ totalTouched=true; });
+        body.querySelector("#mgNsQty").addEventListener("input",function(){ sync(); plan(); });
+        body.querySelector("#mgNsPrice").addEventListener("input",function(){ lastEdited="price"; sync(); });
+        body.querySelector("#mgNsTotal").addEventListener("input",function(){ lastEdited="total"; sync(); });
         body.querySelector("#mgNsCancel").addEventListener("click",close);
         body.querySelector("#mgNsSave").addEventListener("click",function(){
           var err=body.querySelector("#mgNsErr"); err.textContent="";
@@ -2656,8 +2660,8 @@ MG.sales = {
             sale_date:MG.v(body,"mgNsDate")||MG.today(),
             channel:MG.pickVal(body,"mgNsCh")||"manual"
           };
-          var tot=MG.parseMoney(MG.v(body,"mgNsTotal"));
-          if(totalTouched && tot) payload.total_idr=tot;
+          var tot=total();
+          if(tot) payload.total_idr=tot;
           var cust=MG.v(body,"mgNsCust").trim(); if(cust) payload.customer_name=cust;
           var notes=MG.v(body,"mgNsNotes").trim(); if(notes) payload.notes=notes;
           var btn=body.querySelector("#mgNsSave"); btn.disabled=true; btn.textContent="Saving…";
@@ -2702,13 +2706,20 @@ MG.sales = {
       +'</div>',
       onMount:function(body, close){
         MG.wirePicks(body,"mgEsCh");
-        var totalTouched=false;
-        body.querySelector("#mgEsTotal").addEventListener("input",function(){ totalTouched=true; });
-        // qty/price edits recompute total unless the user touched it
-        function sync(){ if(!totalTouched) body.querySelector("#mgEsTotal").value =
-          MG.parseMoney(MG.v(body,"mgEsQty"))*MG.parseMoney(MG.v(body,"mgEsPrice")); }
+        var lastEdited="price";
+        function eq(){ return Math.max(0, MG.parseMoney(MG.v(body,"mgEsQty"))); }
+        function ep(){ return MG.parseMoney(MG.v(body,"mgEsPrice")); }
+        function et(){ return MG.parseMoney(MG.v(body,"mgEsTotal")); }
+        // Bidirectional: type unit price → total = qty×price; type total →
+        // unit price = total/qty. Quantity changes recompute the derived side.
+        function sync(){
+          var q=eq();
+          if(lastEdited==="total") body.querySelector("#mgEsPrice").value = (q>0 ? Math.round(et()/q) : "") || "";
+          else body.querySelector("#mgEsTotal").value = (q>0 ? q*ep() : "") || "";
+        }
         body.querySelector("#mgEsQty").addEventListener("input",sync);
-        body.querySelector("#mgEsPrice").addEventListener("input",sync);
+        body.querySelector("#mgEsPrice").addEventListener("input",function(){ lastEdited="price"; sync(); });
+        body.querySelector("#mgEsTotal").addEventListener("input",function(){ lastEdited="total"; sync(); });
         body.querySelector("#mgEsCancel").addEventListener("click",close);
         body.querySelector("#mgEsDel").addEventListener("click",function(){ close(); self.del(s.id); });
         body.querySelector("#mgEsSave").addEventListener("click",function(){
@@ -2719,7 +2730,7 @@ MG.sales = {
           if(qv<1){ err.textContent="Quantity must be at least 1."; return; }
           diff("quantity", qv, s.quantity);
           diff("unit_price_idr", MG.parseMoney(MG.v(body,"mgEsPrice")), s.unit_price_idr);
-          if(totalTouched) diff("total_idr", MG.parseMoney(MG.v(body,"mgEsTotal")), s.total_idr);
+          diff("total_idr", MG.parseMoney(MG.v(body,"mgEsTotal")), s.total_idr);
           diff("sale_date", MG.v(body,"mgEsDate"), MG.dstr(s.sale_date));
           diff("customer_name", MG.v(body,"mgEsCust").trim(), s.customer_name||"");
           diff("channel", MG.pickVal(body,"mgEsCh"), s.channel||"manual");
