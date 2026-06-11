@@ -4328,7 +4328,8 @@ MG.channels = {
 
 /* ===================== IMPORT WIZARD (Shopee xlsx) ===================== */
 MG.imp = {
-  st:{ built:false, orders:null, ordersName:"", income:null, incomeName:"", items:null, summary:null },
+  st:{ built:false, orders:null, ordersName:"", income:null, incomeName:"", items:null, summary:null,
+       q:"", actionFilter:"", sortKey:"", sortDir:1 },
 
   /* SheetJS is lazy-loaded only when the Import tab is used. */
   _libP:null,
@@ -4499,21 +4500,68 @@ MG.imp = {
     return '<span class="mg-act '+m[0]+'">'+esc(m[1])+'</span>';
   },
 
+  canToggle:function(d){
+    var a=d.raw.action;
+    return a==="insert" || a==="link_existing" || (a==="blocked" && d.product_id);
+  },
+
+  // filtered+sorted view over st.items; each entry keeps its absolute index.
+  view:function(){
+    var st=this.st, self=this;
+    var q=(st.q||"").toLowerCase().trim(), af=st.actionFilter||"";
+    var v=st.items.map(function(d,i){ return {d:d,i:i}; }).filter(function(x){
+      var it=x.d.raw;
+      if(af==="actionable" && !self.canToggle(x.d) && it.action!=="blocked") return false;
+      else if(af && af!=="actionable" && it.action!==af) return false;
+      if(!q) return true;
+      var hay=(it.order_sn+" "+it.product_name+" "+(it.customer_name||"")+" "+it.sale_date+" "+it.action).toLowerCase();
+      return hay.indexOf(q)>=0;
+    });
+    var k=st.sortKey, dir=st.sortDir===-1?-1:1;
+    if(k){
+      v.sort(function(a,b){
+        var ia=a.d.raw, ib=b.d.raw, va, vb;
+        if(k==="qty"){ va=+ia.qty; vb=+ib.qty; }
+        else if(k==="payout"){ va=+a.d.payout||0; vb=+b.d.payout||0; }
+        else if(k==="order"){ va=ia.order_sn; vb=ib.order_sn; }
+        else if(k==="product"){ va=ia.product_name; vb=ib.product_name; }
+        else if(k==="buyer"){ va=ia.customer_name||""; vb=ib.customer_name||""; }
+        else if(k==="action"){ va=ia.action; vb=ib.action; }
+        else { va=ia.sale_date; vb=ib.sale_date; }
+        if(va<vb) return -1*dir; if(va>vb) return 1*dir; return a.i-b.i;
+      });
+    }
+    return v;
+  },
+
   paintPreview:function(){
     var self=this, st=this.st, s=st.summary||{};
-    var chips='<div class="ttotals">'
-      +'<div class="ttotal"><div class="t">Rows</div><div class="v num">'+num(s.total||st.items.length)+'</div></div>'
-      +'<div class="ttotal"><div class="t">New sales</div><div class="v num pos">'+num(s.insert||0)+'</div></div>'
-      +'<div class="ttotal"><div class="t">Link existing</div><div class="v num">'+num(s.link_existing||0)+'</div></div>'
-      +'<div class="ttotal"><div class="t">Already imported</div><div class="v num">'+num(s.skip_imported||0)+'</div></div>'
-      +'<div class="ttotal"><div class="t">Unpaid (skipped)</div><div class="v num">'+num(s.skip_unpaid||0)+'</div></div>'
-      +'<div class="ttotal"><div class="t">Cancelled</div><div class="v num">'+num(s.skip_cancelled||0)+'</div></div>'
-      +'<div class="ttotal"><div class="t">Blocked</div><div class="v num '+((s.blocked||0)>0?'neg':'')+'">'+num(s.blocked||0)+'</div></div>'
+    function chip(key,label,val,cls){
+      var on=st.actionFilter===key?' style="border-color:var(--acc);"':'';
+      return '<div class="ttotal mg-impchip" data-af="'+key+'"'+on+' title="Click to filter"><div class="t">'+label+'</div><div class="v num '+(cls||"")+'">'+val+'</div></div>';
+    }
+    var chips='<div class="ttotals" style="cursor:pointer;">'
+      +chip("","Rows",num(s.total||st.items.length),"")
+      +chip("insert","New sales",num(s.insert||0),"pos")
+      +chip("link_existing","Link existing",num(s.link_existing||0),"")
+      +chip("skip_imported","Already imported",num(s.skip_imported||0),"")
+      +chip("skip_unpaid","Unpaid (skipped)",num(s.skip_unpaid||0),"")
+      +chip("skip_cancelled","Cancelled",num(s.skip_cancelled||0),"")
+      +chip("blocked","Blocked",num(s.blocked||0),(s.blocked||0)>0?"neg":"")
     +'</div>';
 
-    var rows=st.items.map(function(d,i){
-      var it=d.raw;
-      var canToggle = it.action==="insert" || it.action==="link_existing" || (it.action==="blocked" && d.product_id);
+    var view=this.view();
+    var eligible=view.filter(function(x){ return self.canToggle(x.d); });
+    var allOn = eligible.length>0 && eligible.every(function(x){ return x.d.include; });
+
+    function th(key,label){
+      var arrow = st.sortKey===key ? (st.sortDir===-1?" ↓":" ↑") : "";
+      return '<th class="mg-sorth" data-sort="'+key+'" style="cursor:pointer;white-space:nowrap;" title="Sort">'+label+arrow+'</th>';
+    }
+
+    var rows=view.map(function(x){
+      var d=x.d, i=x.i, it=d.raw;
+      var canToggle = self.canToggle(d);
       var mapCell;
       if(it.mapped_product_id){
         mapCell='🎴 '+esc(MG.prodLabelById(it.mapped_product_id));
@@ -4531,8 +4579,9 @@ MG.imp = {
           }).join("")
         +'</select>';
       }
-      var html='<tr'+(arr(it.warnings).length?' style="border-bottom:none;"':'')+'>'
-        +'<td><input type="checkbox" class="mg-cb" data-inc="'+i+'"'+(d.include?' checked':'')+(canToggle?'':' disabled')+'></td>'
+      var html='<tr'+(arr(it.warnings).length?' style="border-bottom:none;"':'')+(canToggle?' class="mg-imp-row" data-row="'+i+'" style="cursor:pointer;"':'')+'>'
+        +'<td onclick="event.stopPropagation()"><input type="checkbox" class="mg-cb" data-inc="'+i+'"'+(d.include?' checked':'')
+          +(canToggle?'':' disabled title="Nothing to do — this row is '+esc(it.action.split("_").join(" "))+'"')+'></td>'
         +'<td style="text-align:left;"><code style="font-size:11px;">'+esc(it.order_sn)+'</code></td>'
         +'<td style="text-align:left;max-width:240px;overflow:hidden;text-overflow:ellipsis;" title="'+esc(it.product_name)+'">'+esc(it.product_name)+'</td>'
         +'<td style="text-align:left;">'+mapCell+'</td>'
@@ -4552,15 +4601,24 @@ MG.imp = {
     }).join("");
 
     el("mgImpStage").innerHTML='<div class="card">'
-      +'<div class="sec-title" style="margin-top:0;">Review plan</div>'
+      +'<div class="sec-title" style="margin-top:0;">Review plan <span style="font-weight:400;color:var(--muted);font-size:12px;">— click a summary chip to filter, headers to sort</span></div>'
       +chips
-      +'<div class="tscroll"><table class="mg"><thead><tr>'
-        +'<th></th><th>Order</th><th>Shopee product</th><th>Maps to</th><th>Qty</th><th>Date</th><th>Buyer</th><th>Payout</th><th>Src</th><th>Action</th>'
-      +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
-      +'<div class="mg-foot" style="justify-content:flex-start;">'
-        +'<button class="mg-btn primary" id="mgImpGo" type="button"></button>'
-        +'<span class="mg-count" id="mgImpGoHint" style="margin:0;">Inserts consume FIFO stock; links just tag the existing sale.</span>'
+      +'<div id="mgImpBar" style="position:sticky;top:6px;z-index:25;">'
+        +'<div class="mg-bulk" style="margin:10px 0;">'
+          +'<button class="mg-btn primary" id="mgImpGo" type="button"></button>'
+          +'<span class="mg-count" id="mgImpSelInfo" style="margin:0;"></span>'
+          +'<span class="spacer" style="flex:1;"></span>'
+          +'<input class="inp" id="mgImpQ" type="search" autocomplete="off" placeholder="🔍 order, product, buyer…" value="'+esc(st.q||"")+'" style="max-width:230px;min-height:32px;font-size:13px;">'
+          +'<button class="mg-btn sm" id="mgImpSelAll" type="button">'+(allOn?"Unselect":"Select")+' all eligible ('+num(eligible.length)+')</button>'
+          +(st.actionFilter?'<button class="mg-btn sm" id="mgImpClearF" type="button">✕ Clear filter</button>':'')
+        +'</div>'
       +'</div>'
+      +'<div class="mg-count">'+num(view.length)+' of '+num(st.items.length)+' rows shown · disabled checkboxes = nothing to do (already imported / cancelled / unpaid)</div>'
+      +'<div class="tscroll"><table class="mg"><thead><tr>'
+        +'<th><input type="checkbox" class="mg-cb" id="mgImpSelHdr"'+(allOn?' checked':'')+(eligible.length?'':' disabled')+' title="Select all eligible shown"></th>'
+        +th("order","Order")+th("product","Shopee product")+'<th>Maps to</th>'+th("qty","Qty")+th("date","Date")+th("buyer","Buyer")+th("payout","Payout")+'<th>Src</th>'+th("action","Action")
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div>'
+      +'<div class="mg-count" style="margin-top:8px;">Inserts consume FIFO stock; links just tag the existing sale.</div>'
       +'<div id="mgImpResults"></div>'
     +'</div>';
 
@@ -4568,6 +4626,15 @@ MG.imp = {
     Array.prototype.forEach.call(stage.querySelectorAll("[data-inc]"),function(c){
       c.addEventListener("change",function(){
         st.items[+c.getAttribute("data-inc")].include=c.checked;
+        self.syncGo();
+      });
+    });
+    Array.prototype.forEach.call(stage.querySelectorAll("tr.mg-imp-row"),function(r){
+      r.addEventListener("click",function(e){
+        if(e.target && (e.target.tagName==="SELECT"||e.target.tagName==="INPUT"||e.target.tagName==="OPTION")) return;
+        var d=st.items[+r.getAttribute("data-row")];
+        d.include=!d.include;
+        var cb=r.querySelector("[data-inc]"); if(cb) cb.checked=d.include;
         self.syncGo();
       });
     });
@@ -4583,8 +4650,41 @@ MG.imp = {
     Array.prototype.forEach.call(stage.querySelectorAll("[data-pay]"),function(inp){
       inp.addEventListener("input",function(){
         st.items[+inp.getAttribute("data-pay")].payout=MG.parseMoney(inp.value);
+        self.syncGo();
       });
     });
+    Array.prototype.forEach.call(stage.querySelectorAll(".mg-impchip"),function(c){
+      c.addEventListener("click",function(){
+        var af=c.getAttribute("data-af");
+        st.actionFilter = (st.actionFilter===af) ? "" : af;
+        self.paintPreview();
+      });
+    });
+    Array.prototype.forEach.call(stage.querySelectorAll(".mg-sorth"),function(h){
+      h.addEventListener("click",function(){
+        var k=h.getAttribute("data-sort");
+        if(st.sortKey===k) st.sortDir=(st.sortDir===-1)?1:-1;
+        else { st.sortKey=k; st.sortDir=1; }
+        self.paintPreview();
+      });
+    });
+    var qIn=el("mgImpQ");
+    qIn.addEventListener("input",function(){
+      st.q=qIn.value;
+      clearTimeout(self._qt);
+      self._qt=setTimeout(function(){
+        var pos=qIn.selectionStart;
+        self.paintPreview();
+        var n=el("mgImpQ"); if(n){ n.focus(); try{ n.setSelectionRange(pos,pos); }catch(e){} }
+      },250);
+    });
+    function setAll(on){
+      self.view().forEach(function(x){ if(self.canToggle(x.d)) x.d.include=on; });
+      self.paintPreview();
+    }
+    el("mgImpSelAll").addEventListener("click",function(){ setAll(!allOn); });
+    var hdr=el("mgImpSelHdr"); if(hdr) hdr.addEventListener("change",function(){ setAll(hdr.checked); });
+    var cf=el("mgImpClearF"); if(cf) cf.addEventListener("click",function(){ st.actionFilter=""; self.paintPreview(); });
     el("mgImpGo").addEventListener("click",function(){ self.commit(); });
     this.syncGo();
   },
@@ -4598,10 +4698,14 @@ MG.imp = {
   },
 
   syncGo:function(){
-    var n=this.selected().length;
+    var picked=this.selected();
+    var n=picked.length, tot=0;
+    picked.forEach(function(d){ tot+=(+d.payout||0); });
     var btn=el("mgImpGo"); if(!btn) return;
     btn.textContent="📥 Commit "+num(n)+" sale"+(n===1?"":"s");
     btn.disabled=!n;
+    var info=el("mgImpSelInfo");
+    if(info) info.textContent = n ? (num(n)+" selected · "+money(tot)) : "nothing selected";
   },
 
   commit:function(){
