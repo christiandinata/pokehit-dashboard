@@ -969,7 +969,8 @@ function batchTable(p){
     var histTag = b && b.historical ? ' <span style="font-size:10px;color:var(--muted);">(last known)</span>' : '';
     var src = b.invoiceId ? ('🧾 #'+b.invoiceId+(b.supplier?(' · '+esc(b.supplier)):'')) : '—';
     var received = (b.qtyInitial!=null) ? num(b.qtyInitial) : num(b.qtyRemaining);
-    var left = b.historical ? '<span style="color:var(--muted);">sold out</span>' : num(b.qtyRemaining);
+    var leftN = +b.qtyRemaining||0;
+    var left = (leftN===0 && !b.historical) ? '<span style="color:var(--muted);">0</span>' : (b.historical ? '<span style="color:var(--muted);">sold out</span>' : num(leftN));
     return '<tr><td>'+esc(b.label||("#"+(b.shipmentId||"")))+histTag+'</td>'
       +'<td style="text-align:left;white-space:nowrap;">'+src+'</td>'
       +'<td>'+esc(b.date||"—")+'</td>'
