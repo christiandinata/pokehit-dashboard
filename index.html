@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a0f16">
 <title>🎴 PokeHit — Dashboard</title>
@@ -3007,9 +3010,10 @@ MG.invoices = {
     if(!rows.length){ el("mgInvTable").innerHTML='<div class="empty">No invoices yet — record a supplier order with ＋ New invoice.</div>'; return; }
     var body=rows.map(function(r){
       var sup=r.supplier_name||MG.partyName(r.supplier_id);
-      var total = (r.total_idr!=null) ? money(r.total_idr)
-        : (r.total_native!=null ? (r.currency==="IDR"?money(r.total_native):(esc(r.currency||"")+" "+num(r.total_native))) : "—");
-      var ship=r.shipping_status || (r.closed_with_shortage?"closed_with_shortage":null);
+      var pay=r.payments||{}, ful=r.fulfillment||{};
+      var total = (pay.total_idr!=null) ? money(pay.total_idr)
+        : (pay.total_native!=null ? (r.currency==="IDR"?money(pay.total_native):(esc(r.currency||"")+" "+num(pay.total_native))) : "—");
+      var ship=ful.shipping_status || (r.closed_with_shortage?"closed_with_shortage":null);
       return '<tr class="mg-click" data-id="'+r.id+'">'
         +'<td>🧾 #'+r.id+'</td>'
         +'<td style="text-align:left;">👤 '+esc(sup)+'</td>'
@@ -3017,7 +3021,7 @@ MG.invoices = {
         +'<td>'+esc(r.currency||"—")+'</td>'
         +'<td class="num">'+total+'</td>'
         +'<td title="'+esc(ship||"on order")+'">'+self.shipIcon(ship)+'</td>'
-        +'<td style="text-align:left;">'+self.payChip(r.payment_status)+'</td>'
+        +'<td style="text-align:left;">'+self.payChip(pay.payment_status)+'</td>'
         +'</tr>';
     }).join("");
     el("mgInvTable").innerHTML='<div class="tscroll"><table class="mg"><thead><tr>'
@@ -3035,7 +3039,8 @@ MG.invoices = {
       onMount:function(body, close){
         MG.api("invoices.get",{id:id}).then(function(d){
           d=d||{};
-          var inv=d.invoice||d, lines=arr(d.lines), pays=arr(d.payments);
+          var inv=d.invoice||d, lines=arr(d.lines), pays=arr(d.payment_transactions);
+          var paySum=d.payments||{};   // invoice_payments view: totals + status
           var ful={}; arr(d.fulfillment).forEach(function(f){ ful[f.invoice_line_id]=f; });
           var sup=inv.supplier_name||MG.partyName(inv.supplier_id);
           var ccy=inv.currency||"IDR";
@@ -3056,11 +3061,10 @@ MG.invoices = {
             return '<tr><td>'+esc(MG.dstr(p.paid_date||p.date))+'</td>'
               +'<td class="num">'+(ccy==="IDR"?money(p.amount_native):num(p.amount_native)+" "+esc(ccy))+'</td>'
               +'<td class="num">'+money(p.amount_idr)+'</td>'
-              +'<td style="text-align:left;">'+esc(p.notes||"—")+'</td></tr>';
+              +'<td style="text-align:left;">'+esc(p.notes||p.description||"—")+'</td></tr>';
           }).join("");
-          var paidIdr=0; pays.forEach(function(p){ paidIdr+=(+p.amount_idr||0); });
-          var summary=d.payment_summary||{};
-          var outstanding=(summary.outstanding_native!=null)?summary.outstanding_native:null;
+          var paidIdr=(paySum.paid_idr!=null)?(+paySum.paid_idr||0):pays.reduce(function(s,p){return s+(+p.amount_idr||0);},0);
+          var outstanding=(paySum.outstanding_native!=null)?paySum.outstanding_native:null;
 
           body.innerHTML=
             '<div class="pmeta" style="margin-bottom:10px;">👤 '+esc(sup)+' · 📅 '+esc(MG.dstr(inv.invoice_date))+' · '+esc(ccy)
@@ -3507,13 +3511,14 @@ MG.legs = {
     var self=this, rows=this.st.rows;
     if(!rows.length){ el("mgLgTable").innerHTML='<div class="empty">No shipping legs yet.</div>'; return; }
     var body=rows.map(function(r){
-      var ships = (r.shipment_ids&&r.shipment_ids.length) ? r.shipment_ids.map(function(x){return "#"+x;}).join(", ")
-        : (r.shipment_count!=null ? r.shipment_count+" shipments" : "—");
+      var allocs=arr(r.allocations);
+      var ships = allocs.length ? allocs.map(function(a){return "#"+a.shipment_id;}).join(", ") : "—";
+      var lineNote = arr(r.line_selections).length ? ' <span style="color:var(--muted);font-size:11px;">(specific lines)</span>' : '';
       return '<tr><td>🚛 '+esc(r.label||("#"+r.id))+'</td>'
-        +'<td>'+esc(MG.dstr(r.incurred_date))+'</td>'
+        +'<td>'+esc(MG.dstr(r.incurred_date||r.leg_date||r.date))+'</td>'
         +'<td class="num">'+money(r.amount_idr)+'</td>'
         +'<td style="text-align:left;">'+(r.party_id?("👤 "+esc(MG.partyName(r.party_id))):'<span style="color:var(--muted);">all</span>')+'</td>'
-        +'<td style="text-align:left;max-width:200px;overflow:hidden;text-overflow:ellipsis;">'+esc(ships)+'</td>'
+        +'<td style="text-align:left;max-width:220px;overflow:hidden;text-overflow:ellipsis;" title="'+esc(ships)+'">'+esc(ships)+lineNote+'</td>'
         +'<td><button class="mg-iconbtn" data-del="'+r.id+'" title="Delete">🗑️</button></td></tr>';
     }).join("");
     el("mgLgTable").innerHTML='<div class="tscroll"><table class="mg"><thead><tr>'
