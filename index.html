@@ -2976,6 +2976,9 @@ MG.products = {
           +' · 💵 price <span class="num">'+(p.sale_price_idr?money(p.sale_price_idr):"—")+'</span>'
           +' · 🎯 target <span class="num">'+num(p.target_quantity||0)+'</span>'
           +(shortfall>0?' · <span class="warnc">need '+num(shortfall)+' more</span>':'')
+        +'</div>'
+        +'<div class="modal-line">🛒 sold <span class="num">'+num(p.units_sold||0)+'</span>'
+          +((p.units_sold||0)>0?' · 💵 revenue <span class="num">'+money(p.sales_revenue_idr||0)+'</span>':'')
         +'</div></div>';
     }).join("");
     var box=el("mgPrList");
