@@ -20,8 +20,16 @@
     /* aliases kept so existing inline styles keep working */
     --panel-a:#121b29; --acc-a:#4c9aff; --acc-b:#8b5cf6;
   }
+  :root{color-scheme:dark;}   /* native scrollbars, selects, date pickers render dark */
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  html{scrollbar-color:#2a3950 transparent;scrollbar-width:thin;}
   html,body{margin:0;padding:0;max-width:100%;overflow-x:hidden;}
+  /* themed scrollbars everywhere (tables, modals, pickers) */
+  ::-webkit-scrollbar{width:10px;height:10px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:#2a3950;border-radius:8px;border:2px solid var(--bg);}
+  ::-webkit-scrollbar-thumb:hover{background:#3a4d6a;}
+  ::-webkit-scrollbar-corner{background:transparent;}
   body{
     background:var(--bg); color:var(--text);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -106,6 +114,17 @@
   /* Mobile header + nav (hidden on desktop) */
   .mhead{display:none;}
   .mnav{display:none;}
+
+  /* Collapsible sidebar (desktop): body.sbmin hides it so tables get full width */
+  body.sbmin .sidebar{display:none;}
+  body.sbmin .main{margin-left:0;}
+  .sbtoggle{
+    flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;
+    width:38px;min-height:38px;border:1px solid var(--border);border-radius:var(--radius-ctl);
+    background:var(--surface);color:var(--muted);cursor:pointer;font-size:16px;
+    transition:color .15s,border-color .15s;
+  }
+  .sbtoggle:hover{color:var(--text);border-color:var(--acc);}
 
   /* Main column */
   .main{margin-left:var(--sb-w);min-height:100vh;}
@@ -528,10 +547,21 @@
   .mg-toast.err{border-left-color:var(--red);}
   @keyframes mgToastIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
 
-  /* bulk action bar — pinned to the TOP of the list so it shows the moment you select */
-  .mg-bulk{position:sticky;top:6px;z-index:20;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  /* bulk action bar — sticky goes on the CONTAINER (#mgSaleBulk): a sticky
+     element can only move within its parent, and the inner bar's parent is
+     exactly its own height. The container spans the card, so it sticks. */
+  #mgSaleBulk{position:sticky;top:6px;z-index:20;}
+  .mg-bulk{display:flex;flex-wrap:wrap;gap:8px;align-items:center;
     background:#0c1420;border:1px solid var(--acc);border-radius:12px;padding:10px 14px;box-shadow:0 12px 32px rgba(0,0,0,.5);margin:0 0 12px;}
   .mg-bulk .bn{font-size:13px;font-weight:700;margin-right:4px;}
+  /* searchable combo (auto-used by MG.f.sel for long option lists) */
+  .mg-combo{position:relative;}
+  .mg-combo-list{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:40;
+    background:var(--panel-b);border:1px solid var(--border);border-radius:10px;
+    max-height:230px;overflow-y:auto;box-shadow:0 14px 34px rgba(0,0,0,.5);}
+  .mg-combo-opt{padding:9px 12px;cursor:pointer;font-size:13.5px;color:var(--text);}
+  .mg-combo-opt:hover,.mg-combo-opt.hot{background:var(--surface-2);}
+  .mg-combo-opt.none{color:var(--muted);cursor:default;}
 
   /* command palette */
   .mg-palette{position:fixed;inset:0;z-index:300;background:rgba(4,8,14,.6);backdrop-filter:blur(5px);
@@ -643,6 +673,7 @@
     <nav class="mnav"><div class="mnav-track" id="navMobile"></div></nav>
 
     <header class="mainbar">
+      <button class="sbtoggle" id="sbToggle" type="button" title="Toggle sidebar" aria-label="Toggle sidebar">☰</button>
       <h1 id="pageTitle">Overview</h1>
       <div class="searchwrap">
         <input id="searchD" class="search" type="search" inputmode="search" autocomplete="off"
@@ -733,6 +764,15 @@ function buildTabs(){
     b.addEventListener("click",function(){ setTab(b.getAttribute("data-tab")); });
   });
   var sbm=el("signoutBtnM"); if(sbm) sbm.addEventListener("click",signOut);
+  // Collapsible sidebar — persists across visits.
+  var sbt=el("sbToggle");
+  if(sbt){
+    try{ if(localStorage.getItem("pokehit_sbmin")==="1") document.body.classList.add("sbmin"); }catch(e){}
+    sbt.addEventListener("click",function(){
+      var min=document.body.classList.toggle("sbmin");
+      try{ localStorage.setItem("pokehit_sbmin", min?"1":"0"); }catch(e){}
+    });
+  }
 }
 function syncNav(name){
   Array.prototype.forEach.call(document.querySelectorAll(".navitem"),function(b){
@@ -1977,12 +2017,23 @@ function signOut(){
   location.reload();
 }
 function prettyTs(ts){
-  // Postgres now()::text looks like "2026-06-11 06:40:50.92827+00". Render it
-  // in the viewer's local time, no microseconds, plus a relative hint.
+  // Postgres now()::text: "2026-06-11 06:40:50.92827+00" (UTC). Parsed by
+  // hand with slice() — deliberately NO regexes: this JS lives inside a TS
+  // template literal which eats backslash escapes (a literal d became d in
+  // the shipped page once; never again).
   if(!ts) return {abs:"—", rel:""};
-  var iso=String(ts).replace(" ","T").replace(/([+-]dd)$/,"$1:00");
-  var d=new Date(iso);
-  if(isNaN(d.getTime())) return {abs:String(ts).replace(/.d+/,""), rel:""};
+  var s=String(ts);
+  function N(x){ return parseInt(x,10); }
+  var y=N(s.slice(0,4)), mo=N(s.slice(5,7)), da=N(s.slice(8,10));
+  var hh=N(s.slice(11,13)), mi=N(s.slice(14,16)), se=N(s.slice(17,19));
+  if(!y||!mo||!da||isNaN(hh)||isNaN(mi)) return {abs:s.split(".")[0], rel:""};
+  var offMin=0, rest=s.slice(19), pi=rest.indexOf("+"), ni=rest.indexOf("-");
+  var p=(pi>=0)?pi:ni, sign=(pi>=0)?1:-1;
+  if(p>=0){
+    var oz=rest.slice(p+1).split(":").join("");
+    offMin=sign*((N(oz.slice(0,2))||0)*60+(N(oz.slice(2,4))||0));
+  }
+  var d=new Date(Date.UTC(y,mo-1,da,hh,mi,isNaN(se)?0:se)-offMin*60000);
   var abs;
   try{
     abs=d.toLocaleString(undefined,{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false});
@@ -2184,6 +2235,63 @@ MG.confirmBox = function(title, msg, okLabel){
 };
 
 /* ---------- form field builders ---------- */
+/* Searchable combo — options registry + one-time delegated events, so combos
+   work inside any modal without per-callsite wiring. Value lives in the hidden
+   input (same id the callers already read via MG.v). */
+MG._combo = {};
+MG._comboWired = false;
+MG.wireCombos = function(){
+  if(MG._comboWired) return; MG._comboWired=true;
+  function wrapOf(t){ return t && t.closest ? t.closest(".mg-combo") : null; }
+  function listOf(w){ return w.querySelector(".mg-combo-list"); }
+  function openList(w, q){
+    var id=w.getAttribute("data-combo"), opts=MG._combo[id]||[], list=listOf(w);
+    var needle=(q||"").toLowerCase().trim();
+    var hits=needle?opts.filter(function(o){ return o.l.toLowerCase().indexOf(needle)>=0; }):opts;
+    list.innerHTML = hits.length
+      ? hits.slice(0,80).map(function(o){ return '<div class="mg-combo-opt" data-v="'+esc(o.v)+'">'+esc(o.l)+'</div>'; }).join("")
+        +(hits.length>80?'<div class="mg-combo-opt none">…'+num(hits.length-80)+' more — keep typing</div>':'')
+      : '<div class="mg-combo-opt none">No match</div>';
+    list.style.display="block";
+  }
+  function pick(w, v, l){
+    w.querySelector("input[type=hidden]").value=v;
+    w.querySelector("input[type=text]").value=l;
+    listOf(w).style.display="none";
+  }
+  function closeAll(except){
+    Array.prototype.forEach.call(document.querySelectorAll(".mg-combo-list"),function(n){
+      if(!except || !except.contains(n)) n.style.display="none";
+    });
+  }
+  document.addEventListener("focusin",function(e){
+    var w=wrapOf(e.target);
+    if(w && e.target.type==="text"){ closeAll(w); e.target.select(); openList(w, ""); }
+  });
+  document.addEventListener("input",function(e){
+    var w=wrapOf(e.target);
+    if(w && e.target.type==="text"){
+      // typing invalidates the previous selection until a new pick is made
+      w.querySelector("input[type=hidden]").value="";
+      openList(w, e.target.value);
+    }
+  });
+  document.addEventListener("keydown",function(e){
+    if(e.key!=="Enter") return;
+    var w=wrapOf(e.target);
+    if(w && e.target.type==="text"){
+      var first=listOf(w).querySelector(".mg-combo-opt:not(.none)");
+      if(first){ e.preventDefault(); pick(w, first.getAttribute("data-v"), first.textContent); }
+    }
+  });
+  document.addEventListener("click",function(e){
+    var opt=e.target && e.target.closest ? e.target.closest(".mg-combo-opt:not(.none)") : null;
+    if(opt){ var w=wrapOf(opt); pick(w, opt.getAttribute("data-v"), opt.textContent); return; }
+    closeAll(wrapOf(e.target));
+  });
+};
+MG.wireCombos();
+
 MG.f = {
   text:function(id,label,val,ph){
     return '<div class="fld"><label for="'+id+'">'+esc(label)+'</label>'
@@ -2198,10 +2306,23 @@ MG.f = {
       +'<input id="'+id+'" class="inp" type="date" value="'+esc(val||MG.today())+'"></div>';
   },
   sel:function(id,label,opts,val){
-    var o=opts.map(function(x){
-      var v = (typeof x==="object") ? x.v : x;
-      var l = (typeof x==="object") ? x.l : x;
-      return '<option value="'+esc(v)+'"'+(String(v)===String(val)?' selected':'')+'>'+esc(l)+'</option>';
+    var norm=opts.map(function(x){
+      return (typeof x==="object") ? {v:String(x.v), l:String(x.l)} : {v:String(x), l:String(x)};
+    });
+    // Long lists (parties etc.) get a searchable combo; short ones stay native.
+    if(norm.length>12){
+      MG._combo[id]=norm;
+      var cur="";
+      for(var i=0;i<norm.length;i++) if(norm[i].v===String(val==null?"":val)) cur=norm[i].l;
+      return '<div class="fld"><label for="'+id+'_in">'+esc(label)+'</label>'
+        +'<div class="mg-combo" data-combo="'+esc(id)+'">'
+          +'<input type="hidden" id="'+id+'" value="'+esc(val==null?"":val)+'">'
+          +'<input id="'+id+'_in" class="inp" type="text" autocomplete="off" placeholder="Type to search…" value="'+esc(cur)+'">'
+          +'<div class="mg-combo-list" style="display:none;"></div>'
+        +'</div></div>';
+    }
+    var o=norm.map(function(x){
+      return '<option value="'+esc(x.v)+'"'+(x.v===String(val==null?"":val)?' selected':'')+'>'+esc(x.l)+'</option>';
     }).join("");
     return '<div class="fld"><label for="'+id+'">'+esc(label)+'</label>'
       +'<select id="'+id+'" class="dd">'+o+'</select></div>';
