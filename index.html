@@ -1952,12 +1952,31 @@ function signOut(){
   try{ localStorage.removeItem("pokehit_auth"); }catch(e){}
   location.reload();
 }
+function prettyTs(ts){
+  // Postgres now()::text looks like "2026-06-11 06:40:50.92827+00". Render it
+  // in the viewer's local time, no microseconds, plus a relative hint.
+  if(!ts) return {abs:"—", rel:""};
+  var iso=String(ts).replace(" ","T").replace(/([+-]dd)$/,"$1:00");
+  var d=new Date(iso);
+  if(isNaN(d.getTime())) return {abs:String(ts).replace(/.d+/,""), rel:""};
+  var abs;
+  try{
+    abs=d.toLocaleString(undefined,{day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:false});
+  }catch(e){ abs=d.toLocaleString(); }
+  var diff=Math.max(0,(Date.now()-d.getTime())/1000), rel;
+  if(diff<60) rel="just now";
+  else if(diff<3600) rel=Math.round(diff/60)+" min ago";
+  else if(diff<86400) rel=Math.round(diff/3600)+" hr ago";
+  else rel=Math.round(diff/86400)+" day"+(diff<172800?"":"s")+" ago";
+  return {abs:abs, rel:rel};
+}
 function renderFoot(){
-  var ts=D.generatedAt||"";
+  var t=prettyTs(D.generatedAt||"");
   var f=el("sbFoot");
   if(f){
     f.innerHTML='<div class="live"><span class="dot"></span> Data is live</div>'
-      +'<div style="margin-top:4px;">Generated '+esc(ts)+'</div>'
+      +'<div style="margin-top:4px;line-height:1.5;">Updated '+esc(t.abs)
+      +(t.rel?' <span style="color:var(--muted);">· '+esc(t.rel)+'</span>':'')+'</div>'
       +'<button class="signout" id="signoutBtn" type="button">⏻ Sign out</button>';
     var sb=el("signoutBtn"); if(sb) sb.addEventListener("click",signOut);
   }
