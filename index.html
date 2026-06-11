@@ -777,44 +777,51 @@ const EXPLAIN = {
 /* ---- Overview period window over the daily P&L series ---- */
 function ovPad(n){ return (n<10?"0":"")+n; }
 function ovIso(d){ return d.getFullYear()+"-"+ovPad(d.getMonth()+1)+"-"+ovPad(d.getDate()); }
-function ovWindow(period){
-  // Returns {from,to} inclusive ISO date strings, or null for "all".
-  // Anchored to the viewer's local calendar day (so "yesterday" = their yesterday).
+function ovAsOf(period){
+  // Returns the inclusive "as of" cutoff date (ISO), or null for grand total.
+  // KPIs are CUMULATIVE: everything from the first sale through this date.
+  // Anchored to the viewer's local calendar day.
   if(period==="all") return null;
-  var now=new Date(), today=ovIso(now);
-  if(period==="today") return {from:today,to:today};
-  if(period==="yesterday"){ var y=new Date(now); y.setDate(y.getDate()-1); var ys=ovIso(y); return {from:ys,to:ys}; }
-  if(period==="7d"){ var s=new Date(now); s.setDate(s.getDate()-6); return {from:ovIso(s),to:today}; }
-  if(period==="30d"){ var s2=new Date(now); s2.setDate(s2.getDate()-29); return {from:ovIso(s2),to:today}; }
-  return null;
+  var now=new Date();
+  if(period==="today") return ovIso(now);
+  var d=new Date(now);
+  if(period==="yesterday") d.setDate(d.getDate()-1);
+  else if(period==="7d") d.setDate(d.getDate()-7);
+  else if(period==="30d") d.setDate(d.getDate()-30);
+  return ovIso(d);
 }
 function ovPnl(period){
-  var w=ovWindow(period);
-  var rows = w ? dailyPnl.filter(function(r){ return r.date>=w.from && r.date<=w.to; }) : dailyPnl;
-  var rev=0,cogs=0,op=0,orders=0,units=0;
-  for(var i=0;i<rows.length;i++){
-    rev+=+rows[i].revenue||0; cogs+=+rows[i].cogs||0; op+=+rows[i].opex||0;
-    orders+=+rows[i].orders||0; units+=+rows[i].units||0;
+  // Cumulative running total through the as-of date (null = all-time).
+  var asOf=ovAsOf(period);
+  var rev=0,cogs=0,op=0,orders=0,units=0, dayNet=0, dayHas=false;
+  for(var i=0;i<dailyPnl.length;i++){
+    var r=dailyPnl[i];
+    if(asOf===null || r.date<=asOf){
+      rev+=+r.revenue||0; cogs+=+r.cogs||0; op+=+r.opex||0;
+      orders+=+r.orders||0; units+=+r.units||0;
+    }
+    if(asOf!==null && r.date===asOf){ dayNet=+r.netProfit||0; dayHas=true; }
   }
   var gross=rev-cogs, net=gross-op;
   return { revenue:rev, cogs:cogs, grossProfit:gross, opex:op, netProfit:net,
     grossMarginPct: rev?gross/rev*100:0, netMarginPct: rev?net/rev*100:0,
-    orders:orders, units:units, win:w };
+    orders:orders, units:units, asOf:asOf, dayNet:dayNet, dayHas:dayHas };
 }
-function ovPeriodLabel(period,w){
-  if(period==="all") return "All time";
-  if(period==="today") return "Today · "+(w?w.from:"");
-  if(period==="yesterday") return "Yesterday · "+(w?w.from:"");
-  if(period==="7d") return "Last 7 days";
-  if(period==="30d") return "Last 30 days";
-  return "";
+function ovPeriodLabel(period,p){
+  if(period==="all") return "All-time cumulative";
+  var d=p.asOf||"";
+  var base = period==="today"   ? "Cumulative as of today ("+d+")"
+           : period==="yesterday"? "Cumulative as of yesterday ("+d+")"
+           : period==="7d"        ? "Cumulative as of "+d+" (7 days ago)"
+           :                        "Cumulative as of "+d+" (30 days ago)";
+  return base + (p.dayHas ? " · +"+money(p.dayNet)+" that day" : "");
 }
 function renderOverview(){
   // P&L cards reflect the selected window; balance cards are always "now".
   var p = dailyPnl.length ? ovPnl(ovState.period) : pnl;
   if(!dailyPnl.length) ovState.period="all";
   var gm = p.grossMarginPct, nm = p.netMarginPct;
-  var PERIODS=[["today","Today"],["yesterday","Yesterday"],["7d","7d"],["30d","30d"],["all","All"]];
+  var PERIODS=[["today","Today"],["yesterday","Yesterday"],["7d","7d ago"],["30d","30d ago"],["all","All"]];
   var seg = dailyPnl.length
     ? '<div class="seg" id="ovSeg">'+PERIODS.map(function(x){
         return '<button data-v="'+x[0]+'"'+(ovState.period===x[0]?' class="on"':'')+'>'+x[1]+'</button>';
@@ -822,7 +829,7 @@ function renderOverview(){
     : "";
   var sub = dailyPnl.length
     ? '<div class="ov-sub" style="color:var(--muted);font-size:13px;margin:2px 0 0;">'
-      +esc(ovPeriodLabel(ovState.period,p.win))+' · '+num(p.orders)+' orders · '+num(p.units)+' units</div>'
+      +esc(ovPeriodLabel(ovState.period,p))+' · '+num(p.orders)+' orders · '+num(p.units)+' units</div>'
     : "";
 
   var kpis =
