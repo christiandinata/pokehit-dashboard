@@ -511,9 +511,9 @@
   .mg-toast.err{border-left-color:var(--red);}
   @keyframes mgToastIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
 
-  /* bulk action bar */
-  .mg-bulk{position:sticky;bottom:14px;z-index:20;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
-    background:#0c1420;border:1px solid var(--acc);border-radius:12px;padding:10px 14px;box-shadow:0 12px 32px rgba(0,0,0,.5);margin-top:12px;}
+  /* bulk action bar — pinned to the TOP of the list so it shows the moment you select */
+  .mg-bulk{position:sticky;top:6px;z-index:20;display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+    background:#0c1420;border:1px solid var(--acc);border-radius:12px;padding:10px 14px;box-shadow:0 12px 32px rgba(0,0,0,.5);margin:0 0 12px;}
   .mg-bulk .bn{font-size:13px;font-weight:700;margin-right:4px;}
 
   /* command palette */
@@ -2428,10 +2428,11 @@ MG.sales = {
            +'<button class="mg-btn" id="mgSaleReload" type="button" title="Reload">↻</button>'
            +'<button class="mg-btn primary" id="mgSaleAdd" type="button">＋ New sale</button>'
          +'</div>'
-         +'<div class="mg-count" id="mgSaleCount"></div>'
+         +'<div class="mg-count"><span id="mgSaleCount"></span>'
+           +'<span style="margin-left:8px;color:var(--muted);font-weight:400;">· 🖱️ click a row to edit · ☑️ tick boxes to bulk-edit</span></div>'
+         +'<div id="mgSaleBulk"></div>'
          +'<div id="mgSaleTable">'+MG.skel(6)+'</div>'
-       +'</div>'
-       +'<div id="mgSaleBulk"></div>';
+       +'</div>';
       this.st.built=true;
       var self=this;
       el("mgSaleFrom").addEventListener("change",function(e){ self.st.date_from=e.target.value; self.fetch(); });
