@@ -2341,8 +2341,7 @@ MG.sales = {
            +'<button class="mg-btn" id="mgSaleReload" type="button" title="Reload">↻</button>'
            +'<button class="mg-btn primary" id="mgSaleAdd" type="button">＋ New sale</button>'
          +'</div>'
-         +'<div class="mg-count" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><span id="mgSaleCount"></span>'
-           +'<button class="mg-btn sm" id="mgSaleBulkPick" type="button" style="display:none;"></button></div>'
+         +'<div class="mg-count" id="mgSaleCount"></div>'
          +'<div id="mgSaleTable">'+MG.skel(6)+'</div>'
        +'</div>'
        +'<div id="mgSaleBulk"></div>';
@@ -2396,33 +2395,9 @@ MG.sales = {
     });
   },
 
-  // Heuristic flag for likely store-supply / wholesale sales: still untagged
-  // (manual) and either a bulk quantity or a clean round wholesale price —
-  // marketplace sales are qty 1 with odd net payouts (261.050, 148.999). This
-  // only SUGGESTS; the owner makes the final classification via the bulk bar.
-  bulkHint:function(s){
-    if((s.channel||"manual")!=="manual") return false;
-    var q=+s.quantity||0, u=+s.unit_price_idr||0;
-    return q>=3 || (q>=2 && u>=50000 && u%5000===0);
-  },
-
   paint:function(){
     var self=this, rows=this.filtered();
     el("mgSaleCount").textContent=num(rows.length)+" of "+num(this.st.rows.length)+" sales";
-    var cands=rows.filter(function(s){ return self.bulkHint(s); });
-    var pick=el("mgSaleBulkPick");
-    if(pick){
-      if(cands.length){
-        pick.style.display="";
-        pick.textContent="💡 Select "+num(cands.length)+" store-supply candidate"+(cands.length===1?"":"s");
-        pick.onclick=function(){
-          self.st.sel={};
-          cands.forEach(function(s){ self.st.sel[s.id]=true; });
-          self.paint();
-          MG.toast("Selected "+num(cands.length)+" likely store-supply sales — review, then tap 🏪 Store Supply to classify.","ok");
-        };
-      } else { pick.style.display="none"; }
-    }
     if(!rows.length){
       el("mgSaleTable").innerHTML='<div class="empty">No sales match. Try widening the date range, or record one with ＋ New sale.</div>';
       this.paintBulk(); return;
@@ -2440,8 +2415,7 @@ MG.sales = {
         +'<td class="num">'+num(s.quantity)+'</td>'
         +'<td class="num">'+money(s.unit_price_idr)+'</td>'
         +'<td class="num">'+money(total)+'</td>'
-        +'<td style="text-align:left;">'+MG.chChip(s.channel)
-          +(self.bulkHint(s)?' <span title="Looks like a bulk / store-supply sale — review &amp; classify" style="cursor:help;">💡</span>':'')+'</td>'
+        +'<td style="text-align:left;">'+MG.chChip(s.channel)+'</td>'
         +'<td style="text-align:left;">'+esc(s.customer_name||"—")+'</td>'
         +'<td title="'+esc(loc.label)+'">'+loc.icon+'</td>'
         +'<td class="num '+marginClass(m)+'">'+money(profit)+'</td>'
