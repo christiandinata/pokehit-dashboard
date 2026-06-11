@@ -694,6 +694,8 @@ function prodName(p){
 
 /* ---------- top-level data (populated in boot) ---------- */
 var pnl={}, bal={}, products=[], monthly=[], opex=[], capital=[], cashflow={};
+var dailyPnl=[];               // [{date,orders,units,revenue,cogs,grossProfit,opex,netProfit}]
+var ovState={ period:"all" };  // Overview KPI window
 
 /* ===================== TABS / NAV ===================== */
 const TABS = [
@@ -772,17 +774,66 @@ const EXPLAIN = {
   value:"<b>Value created = equity − capital.</b> The wealth the business has generated on top of the money partners put in. This is the real scoreboard."
 };
 
+/* ---- Overview period window over the daily P&L series ---- */
+function ovPad(n){ return (n<10?"0":"")+n; }
+function ovIso(d){ return d.getFullYear()+"-"+ovPad(d.getMonth()+1)+"-"+ovPad(d.getDate()); }
+function ovWindow(period){
+  // Returns {from,to} inclusive ISO date strings, or null for "all".
+  // Anchored to the viewer's local calendar day (so "yesterday" = their yesterday).
+  if(period==="all") return null;
+  var now=new Date(), today=ovIso(now);
+  if(period==="today") return {from:today,to:today};
+  if(period==="yesterday"){ var y=new Date(now); y.setDate(y.getDate()-1); var ys=ovIso(y); return {from:ys,to:ys}; }
+  if(period==="7d"){ var s=new Date(now); s.setDate(s.getDate()-6); return {from:ovIso(s),to:today}; }
+  if(period==="30d"){ var s2=new Date(now); s2.setDate(s2.getDate()-29); return {from:ovIso(s2),to:today}; }
+  return null;
+}
+function ovPnl(period){
+  var w=ovWindow(period);
+  var rows = w ? dailyPnl.filter(function(r){ return r.date>=w.from && r.date<=w.to; }) : dailyPnl;
+  var rev=0,cogs=0,op=0,orders=0,units=0;
+  for(var i=0;i<rows.length;i++){
+    rev+=+rows[i].revenue||0; cogs+=+rows[i].cogs||0; op+=+rows[i].opex||0;
+    orders+=+rows[i].orders||0; units+=+rows[i].units||0;
+  }
+  var gross=rev-cogs, net=gross-op;
+  return { revenue:rev, cogs:cogs, grossProfit:gross, opex:op, netProfit:net,
+    grossMarginPct: rev?gross/rev*100:0, netMarginPct: rev?net/rev*100:0,
+    orders:orders, units:units, win:w };
+}
+function ovPeriodLabel(period,w){
+  if(period==="all") return "All time";
+  if(period==="today") return "Today · "+(w?w.from:"");
+  if(period==="yesterday") return "Yesterday · "+(w?w.from:"");
+  if(period==="7d") return "Last 7 days";
+  if(period==="30d") return "Last 30 days";
+  return "";
+}
 function renderOverview(){
-  var gm = pnl.grossMarginPct, nm = pnl.netMarginPct;
-  var kpis =
-    kpiCard("Revenue", money(pnl.revenue), "", "revenue")
-   +kpiCard("Gross Profit", money(pnl.grossProfit), '<span class="'+marginClass(gm)+'">'+pct(gm)+' margin</span>', "gross")
-   +kpiCard("Net Profit", money(pnl.netProfit), '<span class="'+marginClass(nm)+'">'+pct(nm)+' margin</span>', "net", "accent-green")
-   +kpiCard("Inventory", money(bal.inventory), "stock at landed cost", "inventory")
-   +kpiCard("Cash", money(bal.cash), "in − out of Pokehit", "cash")
-   +kpiCard("Value Created", money(bal.valueCreated), "equity − capital", "value", "accent-green");
+  // P&L cards reflect the selected window; balance cards are always "now".
+  var p = dailyPnl.length ? ovPnl(ovState.period) : pnl;
+  if(!dailyPnl.length) ovState.period="all";
+  var gm = p.grossMarginPct, nm = p.netMarginPct;
+  var PERIODS=[["today","Today"],["yesterday","Yesterday"],["7d","7d"],["30d","30d"],["all","All"]];
+  var seg = dailyPnl.length
+    ? '<div class="seg" id="ovSeg">'+PERIODS.map(function(x){
+        return '<button data-v="'+x[0]+'"'+(ovState.period===x[0]?' class="on"':'')+'>'+x[1]+'</button>';
+      }).join("")+'</div>'
+    : "";
+  var sub = dailyPnl.length
+    ? '<div class="ov-sub" style="color:var(--muted);font-size:13px;margin:2px 0 0;">'
+      +esc(ovPeriodLabel(ovState.period,p.win))+' · '+num(p.orders)+' orders · '+num(p.units)+' units</div>'
+    : "";
 
-  var rev=pnl.revenue||0, cogs=pnl.cogs||0, gross=pnl.grossProfit||0, op=pnl.opex||0, net=pnl.netProfit||0;
+  var kpis =
+    kpiCard("Revenue", money(p.revenue), "", "revenue")
+   +kpiCard("Gross Profit", money(p.grossProfit), '<span class="'+marginClass(gm)+'">'+pct(gm)+' margin</span>', "gross")
+   +kpiCard("Net Profit", money(p.netProfit), '<span class="'+marginClass(nm)+'">'+pct(nm)+' margin</span>', "net", "accent-green")
+   +kpiCard("Inventory", money(bal.inventory), "stock at landed cost · now", "inventory")
+   +kpiCard("Cash", money(bal.cash), "in − out of Pokehit · now", "cash")
+   +kpiCard("Value Created", money(bal.valueCreated), "equity − capital · now", "value", "accent-green");
+
+  var rev=p.revenue||0, cogs=p.cogs||0, gross=p.grossProfit||0, op=p.opex||0, net=p.netProfit||0;
   var scale = Math.max(rev,1);
   function W(){return (Math.min(Math.abs(arguments[0]),scale)/scale)*100;}
   function bar(left,width,color){
@@ -797,7 +848,10 @@ function renderOverview(){
    +wfRow("Net profit",net,bar(0,W(net),(net>=0?"var(--green)":"var(--red)")),(net>=0?"pos":"neg"));
 
   el("sec-overview").innerHTML =
-    '<div class="sec-title">Key figures</div>'
+    '<div class="sec-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">'
+     +'<div class="sec-title" style="margin:0;">Key figures</div>'+seg
+   +'</div>'
+   +sub
    +'<div class="kpis">'+kpis+'</div>'
    +'<div class="sec-title">P&amp;L waterfall</div>'
    +'<div class="card">'+wf+'</div>'
@@ -807,6 +861,12 @@ function renderOverview(){
      +'<div class="donut">'+donut(nm,"#4ca9ff")+'<div class="dlabel">Net margin</div></div>'
    +'</div></div>';
 
+  var segEl=el("ovSeg");
+  if(segEl){
+    Array.prototype.forEach.call(segEl.querySelectorAll("button"),function(b){
+      b.addEventListener("click",function(){ ovState.period=b.getAttribute("data-v"); renderOverview(); });
+    });
+  }
   wireExplain("sec-overview");
 }
 function wfRow(label,amt,barHtml,cls){
@@ -1911,6 +1971,7 @@ function boot(){
   opex = arr(D.opex);
   capital = arr(D.capital);
   cashflow = D.cashflow||{};
+  dailyPnl = arr(D.dailyPnl);
 
   var gate=el("gate"), app=el("app");
   if(gate) gate.style.display="none";
@@ -2425,9 +2486,19 @@ MG.sales = {
         +'</span></td></tr>';
     }).join("");
     el("mgSaleTable").innerHTML='<div class="tscroll"><table class="mg"><thead><tr>'
-      +'<th></th><th>Date</th><th>Product</th><th>Qty</th><th>Unit</th><th>Total</th><th>Channel</th><th>Customer</th><th>Loc</th><th>Profit</th><th></th>'
+      +'<th style="text-align:center;"><input type="checkbox" id="mgSaleSelAll" title="Select all shown"></th>'
+      +'<th>Date</th><th>Product</th><th>Qty</th><th>Unit</th><th>Total</th><th>Channel</th><th>Customer</th><th>Loc</th><th>Profit</th><th></th>'
       +'</tr></thead><tbody>'+body+'</tbody></table></div>';
     var t=el("mgSaleTable");
+    var selAll=el("mgSaleSelAll");
+    if(selAll){
+      selAll.checked = rows.length>0 && rows.every(function(s){ return self.st.sel[s.id]; });
+      selAll.addEventListener("change",function(){
+        if(selAll.checked){ rows.forEach(function(s){ self.st.sel[s.id]=true; }); }
+        else { rows.forEach(function(s){ delete self.st.sel[s.id]; }); }
+        self.paint();
+      });
+    }
     Array.prototype.forEach.call(t.querySelectorAll("[data-edit]"),function(b){
       b.addEventListener("click",function(e){ e.stopPropagation(); self.editModal(+b.getAttribute("data-edit")); });
     });
@@ -2451,20 +2522,32 @@ MG.sales = {
     var self=this, ids=Object.keys(this.st.sel);
     var box=el("mgSaleBulk");
     if(!ids.length){ box.innerHTML=""; return; }
-    box.innerHTML='<div class="mg-bulk"><span class="bn">'+ids.length+' selected — classify channel:</span>'
+    box.innerHTML='<div class="mg-bulk"><span class="bn">'+num(ids.length)+' selected</span>'
+      +'<span class="bn" style="margin-left:6px;font-weight:600;color:var(--muted);">Set channel:</span>'
       +MG.CHANNELS.map(function(c){
         return '<button class="mg-btn sm" data-cls="'+c.id+'">'+c.icon+' '+esc(c.label)+'</button>';
       }).join("")
       +'<span class="spacer" style="flex:1;"></span>'
+      +'<button class="mg-btn sm" id="mgSaleBulkDel" style="color:var(--red);">🗑️ Delete</button>'
       +'<button class="mg-btn sm" id="mgSaleSelClear">Clear</button></div>';
     Array.prototype.forEach.call(box.querySelectorAll("[data-cls]"),function(b){
       b.addEventListener("click",function(){
         var ch=b.getAttribute("data-cls");
         MG.api("sales.classify",{ ids: ids.map(Number), channel: ch }).then(function(d){
           MG.toast("Tagged "+num((d&&d.updated)||ids.length)+" sales as "+MG.chById(ch).label,"ok");
-          self.fetch(true);
+          self.st.sel={}; self.fetch(true);
         }).catch(MG.fail);
       });
+    });
+    box.querySelector("#mgSaleBulkDel").addEventListener("click",function(){
+      MG.confirmBox("Delete "+num(ids.length)+" sale"+(ids.length===1?"":"s")+"?",
+        "Each one's stock is returned via FIFO reversal and it vanishes from every report. This cannot be undone.")
+        .then(function(yes){
+          if(!yes) return;
+          Promise.all(ids.map(function(id){ return MG.api("sales.delete",{id:Number(id)}); }))
+            .then(function(){ MG.toast("Deleted "+num(ids.length)+" sales","ok"); self.st.sel={}; self.fetch(true); MG.loadCatalog(true); })
+            .catch(MG.fail);
+        });
     });
     box.querySelector("#mgSaleSelClear").addEventListener("click",function(){ self.st.sel={}; self.paint(); });
   },
