@@ -968,21 +968,28 @@ function batchTable(p){
   var rows=batches.map(function(b){
     var histTag = b && b.historical ? ' <span style="font-size:10px;color:var(--muted);">(last known)</span>' : '';
     var src = b.invoiceId ? ('🧾 #'+b.invoiceId+(b.supplier?(' · '+esc(b.supplier)):'')) : '—';
+    var received = (b.qtyInitial!=null) ? num(b.qtyInitial) : num(b.qtyRemaining);
+    var left = b.historical ? '<span style="color:var(--muted);">sold out</span>' : num(b.qtyRemaining);
     return '<tr><td>'+esc(b.label||("#"+(b.shipmentId||"")))+histTag+'</td>'
       +'<td style="text-align:left;white-space:nowrap;">'+src+'</td>'
       +'<td>'+esc(b.date||"—")+'</td>'
-      +'<td class="num">'+num(b.qtyRemaining)+'</td>'
+      +'<td class="num">'+received+'</td>'
+      +'<td class="num">'+left+'</td>'
       +'<td class="num">'+money(b.buyPerUnit)+'</td>'
       +'<td class="num">'+money(b.shipFeePerUnit)+'</td>'
       +'<td class="num">'+money(b.landedPerUnit)+'</td></tr>';
   }).join("");
   return '<div class="tscroll"><table><thead><tr>'
-    +'<th>Batch</th><th>From invoice</th><th>Date</th><th>Qty left</th><th>Buy/u</th><th>Ship+fee/u</th><th>Landed/u</th>'
+    +'<th>Batch</th><th>From invoice</th><th>Date</th><th>Received</th><th>Left</th><th>Buy/u</th><th>Ship+fee/u</th><th>Landed/u</th>'
     +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
 }
 function renderModal(){
   if(!products.length){ el("sec-modal").innerHTML='<div class="empty">No products.</div>'; return; }
-  var html='<div class="sec-title">Modal — how each cost is built</div>';
+  var html='<div class="sec-title">Modal — how each cost is built</div>'
+    +'<div class="card" style="padding:12px 14px;position:sticky;top:6px;z-index:18;">'
+      +'<input id="modalFilter" class="inp" type="search" autocomplete="off" placeholder="🔍 Filter products… (set, language, type)" style="min-height:40px;">'
+      +'<div class="mg-count" id="modalFilterCount" style="margin:6px 2px 0;"></div>'
+    +'</div>';
   html += products.map(function(p){
     // modalSource: 'warehouse' | 'historical' | 'none'. Fall back to a sensible inference if absent.
     var src=p.modalSource;
@@ -1001,7 +1008,7 @@ function renderModal(){
     } else {
       body = modalLine(p)+'<div class="detail">'+batchTable(p)+'</div>';
     }
-    return '<div class="card pcard" id="modal-'+esc(p.productId)+'">'
+    return '<div class="card pcard" id="modal-'+esc(p.productId)+'" data-name="'+esc((prodName(p)+" "+[p.setName,p.language,p.type].filter(Boolean).join(" ")).toLowerCase())+'">'
       +'<div class="pname">🎴 '+esc(prodName(p))+' <span class="chev">▶</span></div>'
       +'<div class="pmeta">'+esc([p.setName,p.language,p.type].filter(Boolean).join(" · "))+'</div>'
       +stockBadges(p)
@@ -1012,6 +1019,17 @@ function renderModal(){
   Array.prototype.forEach.call(el("sec-modal").querySelectorAll(".pcard"),function(c){
     c.addEventListener("click",function(){ toggle(c); });
   });
+  var mf=el("modalFilter");
+  if(mf){
+    mf.addEventListener("input",function(){
+      var q=mf.value.toLowerCase().trim(), shown=0;
+      Array.prototype.forEach.call(el("sec-modal").querySelectorAll(".pcard"),function(c){
+        var hit=!q || (c.getAttribute("data-name")||"").indexOf(q)>=0;
+        c.style.display=hit?"":"none"; if(hit) shown++;
+      });
+      el("modalFilterCount").textContent=q?(shown+" of "+products.length+" products"):"";
+    });
+  }
 }
 
 /* ===================== SALES (per product) ===================== */
