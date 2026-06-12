@@ -2983,7 +2983,6 @@ MG.products = {
     if(!rows.length){ el("mgPrList").innerHTML='<div class="empty">No products match — add one with ＋ New product.</div>'; return; }
     el("mgPrList").innerHTML=rows.map(function(p){
       var st=MG.stockOf(p.id);
-      var shortfall=Math.max(0,(p.target_quantity||0)-(st.total||0));
       return '<div class="card" style="margin-bottom:10px;">'
         +'<div class="pname">🎴 '+esc(MG.prodLabel(p))
           +'<span class="mg-rowact">'
@@ -2996,8 +2995,6 @@ MG.products = {
         +MG.stockBadges(st)
         +'<div class="modal-line">💰 modal <span class="num">'+money(st.avg_landed_cost_idr)+'</span>'
           +' · 💵 price <span class="num">'+(p.sale_price_idr?money(p.sale_price_idr):"—")+'</span>'
-          +' · 🎯 target <span class="num">'+num(p.target_quantity||0)+'</span>'
-          +(shortfall>0?' · <span class="warnc">need '+num(shortfall)+' more</span>':'')
         +'</div>'
         +'<div class="modal-line">🛒 sold <span class="num">'+num(p.units_sold||0)+'</span>'
           +((p.units_sold||0)>0?' · 💵 revenue <span class="num">'+money(p.sales_revenue_idr||0)+'</span>':'')
@@ -3050,7 +3047,6 @@ MG.products = {
         +'</div>'
         +'<div class="mg-grid2">'
           +MG.f.num("mgPePrice","Default sell price (IDR)",p?(p.sale_price_idr||""):"",1000)
-          +MG.f.num("mgPeTarget","Target quantity",p?(p.target_quantity||0):0)
         +'</div>'
         +MG.f.text("mgPeSku","SKU",p?(p.sku||""):"","optional")
         +'<div class="mg-err" id="mgPeErr"></div>'
@@ -3067,7 +3063,6 @@ MG.products = {
             language:MG.pickVal(body,"mgPeLang"),
             product_type_id:+MG.v(body,"mgPeType"),
             sale_price_idr:MG.parseMoney(MG.v(body,"mgPePrice"))||null,
-            target_quantity:MG.parseMoney(MG.v(body,"mgPeTarget"))||0,
             sku:MG.v(body,"mgPeSku").trim()||null
           };
           if(!payload.set_name){ err.textContent="Set name is required."; return; }
