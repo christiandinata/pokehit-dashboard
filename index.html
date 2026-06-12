@@ -4593,7 +4593,7 @@ MG.imp = {
         +'<td>'+esc(it.sale_date)+'</td>'
         +'<td style="text-align:left;">'+esc(it.customer_name||"—")+'</td>'
         +'<td><input class="inp mg-payout num" data-pay="'+i+'" value="'+(d.payout||0)+'"></td>'
-        +'<td style="text-align:left;"><span class="mg-chip">'+esc({order:"order subtotal",income:"income ✓"}[it.payout_source]||it.payout_source||"—")+'</span></td>'
+        +'<td style="text-align:left;"><span class="mg-chip">'+esc({order:"order subtotal",income:"income ✓","shopee_net":"net (Shopee fees)"}[it.payout_source]||it.payout_source||"—")+'</span></td>'
         +'<td style="text-align:left;">'+self.actChip(it.action)
           +(it.match_sale_id?(' <span style="font-size:11px;color:var(--muted);">#'+it.match_sale_id+'</span>'):'')+'</td>'
       +'</tr>';
