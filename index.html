@@ -4330,7 +4330,7 @@ MG.channels = {
 /* ===================== IMPORT WIZARD (Shopee xlsx) ===================== */
 MG.imp = {
   st:{ built:false, orders:null, ordersName:"", income:null, incomeName:"", items:null, summary:null,
-       q:"", actionFilter:"", sortKey:"", sortDir:1 },
+       q:"", actionFilter:"", sortKey:"", sortDir:1, fromLocation:"warehouse" },
 
   /* SheetJS is lazy-loaded only when the Import tab is used. */
   _libP:null,
@@ -4470,9 +4470,9 @@ MG.imp = {
   preview:function(){
     var self=this, st=this.st;
     if(!st.orders) return;
-    var btn=el("mgImpPrev"); btn.disabled=true; btn.textContent="Analyzing…";
+    var btn=el("mgImpPrev"); if(btn){ btn.disabled=true; btn.textContent="Analyzing…"; }
     el("mgImpStage").innerHTML='<div class="card">'+MG.skel(6)+'</div>';
-    var body={ channel:"shopee", orders:st.orders };
+    var body={ channel:"shopee", orders:st.orders, from_location:st.fromLocation||"warehouse" };
     if(st.income && st.income.length) body.income=st.income;
     Promise.all([MG.loadCatalog(), MG.api("import.preview",body)]).then(function(res){
       var d=res[1]||{};
@@ -4486,10 +4486,10 @@ MG.imp = {
           saveAlias:false
         };
       });
-      btn.disabled=false; btn.textContent="🔎 Preview import";
+      if(btn){ btn.disabled=false; btn.textContent="🔎 Preview import"; }
       self.paintPreview();
     }).catch(function(err){
-      btn.disabled=false; btn.textContent="🔎 Preview import";
+      if(btn){ btn.disabled=false; btn.textContent="🔎 Preview import"; }
       el("mgImpStage").innerHTML='<div class="card"><div class="empty">Preview failed — '+esc(err.message)+'</div></div>';
     });
   },
@@ -4612,7 +4612,10 @@ MG.imp = {
           +'<button class="mg-btn primary" id="mgImpGo" type="button"></button>'
           +'<span class="mg-count" id="mgImpSelInfo" style="margin:0;"></span>'
           +'<span class="spacer" style="flex:1;"></span>'
-          +'<input class="inp" id="mgImpQ" type="search" autocomplete="off" placeholder="🔍 order, product, buyer…" value="'+esc(st.q||"")+'" style="max-width:230px;min-height:32px;font-size:13px;">'
+          +'<span class="bn" style="color:var(--muted);font-weight:600;">Deduct from:</span>'
+          +'<button class="mg-btn sm'+(st.fromLocation!=="store"?" primary":"")+'" id="mgImpLocWh" type="button">🏠 Warehouse</button>'
+          +'<button class="mg-btn sm'+(st.fromLocation==="store"?" primary":"")+'" id="mgImpLocSt" type="button">🏬 Store</button>'
+          +'<input class="inp" id="mgImpQ" type="search" autocomplete="off" placeholder="🔍 order, product, buyer…" value="'+esc(st.q||"")+'" style="max-width:200px;min-height:32px;font-size:13px;">'
           +'<button class="mg-btn sm" id="mgImpSelAll" type="button">'+(allOn?"Unselect":"Select")+' all eligible ('+num(eligible.length)+')</button>'
           +(st.actionFilter?'<button class="mg-btn sm" id="mgImpClearF" type="button">✕ Clear filter</button>':'')
         +'</div>'
@@ -4686,6 +4689,9 @@ MG.imp = {
       self.view().forEach(function(x){ if(self.canToggle(x.d)) x.d.include=on; });
       self.paintPreview();
     }
+    function setLoc(loc){ if(st.fromLocation===loc) return; st.fromLocation=loc; self.preview(); }
+    var lw=el("mgImpLocWh"); if(lw) lw.addEventListener("click",function(){ setLoc("warehouse"); });
+    var lst=el("mgImpLocSt"); if(lst) lst.addEventListener("click",function(){ setLoc("store"); });
     el("mgImpSelAll").addEventListener("click",function(){ setAll(!allOn); });
     var hdr=el("mgImpSelHdr"); if(hdr) hdr.addEventListener("change",function(){ setAll(hdr.checked); });
     var cf=el("mgImpClearF"); if(cf) cf.addEventListener("click",function(){ st.actionFilter=""; self.paintPreview(); });
@@ -4729,7 +4735,7 @@ MG.imp = {
         total_idr:d.payout||0
       };
       if(isLink) out.sale_id=it.match_sale_id;
-      else out.from_location="warehouse";
+      else out.from_location=st.fromLocation||"warehouse";
       if(d.saveAlias) out.save_alias=it.product_name;
       return out;
     });
