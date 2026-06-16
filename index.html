@@ -686,6 +686,7 @@
       <div id="searchResults" class="sresults"></div>
       <div id="tabview" class="tabview">
         <section id="sec-overview"></section>
+        <section id="sec-menu"></section>
         <section id="sec-modal"></section>
         <section id="sec-sales"></section>
         <section id="sec-bydate"></section>
@@ -748,7 +749,7 @@ var ovState={ period:"all" };  // Overview KPI window
 
 /* ===================== TABS / NAV ===================== */
 const TABS = [
-  ["overview","Overview","📊"],["modal","Modal","💰"],["sales","Sales","🧾"],["bydate","By Date","📅"],["charts","Charts","📈"],
+  ["overview","Overview","📊"],["menu","Menu","🔥"],["modal","Modal","💰"],["sales","Sales","🧾"],["bydate","By Date","📅"],["charts","Charts","📈"],
   ["performance","Performance","🏆"],["capital","Capital","🏦"],["expenses","Expenses","💸"],["sandbox","Playground","🎚️"],["audit","Audit","🔍"]
 ];
 function buildTabs(){
@@ -2033,6 +2034,106 @@ function jumpToProduct(pid){
 }
 function setTabSilent(name){ syncNav(name); }
 
+/* ===================== MENU (supplier broadcast) ===================== */
+var menuState={ tab:"ready" };
+function idnDate(){
+  var M=["Januari","Februari","Maret","April","Mei","Juni","Juli","Agustus",
+         "September","Oktober","November","Desember"];
+  var d=new Date(); return d.getDate()+" "+M[d.getMonth()]+" "+d.getFullYear();
+}
+// integer with "." thousands separators — built by hand (no regex; template
+// literals eat backslashes, see prettyTs gotcha).
+function menuDots(n){
+  var s=String(Math.round(n)), out="", c=0;
+  for(var i=s.length-1;i>=0;i--){ out=s.charAt(i)+out; if(++c%3===0 && i>0) out="."+out; }
+  return out;
+}
+function menuShortType(t){
+  var s=(t||"").toLowerCase();
+  if(s.indexOf("box case")>=0) return "Case";
+  if(s.indexOf("bundle case")>=0) return "Bundle Case";
+  if(s.indexOf("etb")>=0) return "ETB";
+  if(s.indexOf("costco")>=0) return "Costco";
+  if(s.indexOf("booster box")>=0) return "Box";
+  if(s.indexOf("set")>=0) return "Set";
+  if(s.indexOf("box")>=0) return "Box";
+  return t||"";
+}
+function buildMenuText(readyOnly){
+  function jp(p){ var l=(p.language||"").toLowerCase(); return l.charAt(0)==="j"?"🇯🇵":""; }
+  function inc(p){
+    if(!(+p.supplierPrice>0)) return false;
+    if(readyOnly) return ((+p.inWarehouse||0)+(+p.inStore||0))>0;
+    return true;
+  }
+  var list=arr(products).filter(inc);
+  function isLoose(p){ return (p.type||"").toLowerCase().indexOf("loose")>=0; }
+  function isBundle(p){ var s=(p.type||"").toLowerCase(); return s.indexOf("bundle")>=0 && s.indexOf("case")<0 && s.indexOf("loose")<0; }
+  function sect(match, otherBox){
+    return list.filter(match).slice().sort(function(a,b){ return String(a.setName).localeCompare(String(b.setName)); })
+      .map(function(p){
+        var label=otherBox ? (p.setName+" "+menuShortType(p.type)) : p.setName;
+        return jp(p)+label+" : "+menuDots((+p.supplierPrice)/1000);
+      });
+  }
+  var pack=sect(isLoose,false);
+  var bun=sect(isBundle,false);
+  var oth=sect(function(p){ return !isLoose(p) && !isBundle(p); }, true);
+
+  var L=[];
+  L.push("🔥 MENU SUPPLIER POKEMON TCG TANGERANG 🔥");
+  L.push(idnDate()); L.push("");
+  L.push(readyOnly?"*READY STOCK*":"*PRICE LIST (semua produk)*");
+  if(pack.length){ L.push("*Pack*"); L=L.concat(pack); L.push(""); }
+  if(bun.length){ L.push("*Bundle*"); L=L.concat(bun); L.push(""); }
+  if(oth.length){ L.push("*Other BOX*"); L=L.concat(oth); L.push(""); }
+  L.push("----------------------"); L.push("");
+  L.push("*T&C:*");
+  L.push("✅ Stock terbatas");
+  L.push("✅ Harga dapat berubah sewaktu-waktu");
+  L.push("✅ Booking hanya dianggap valid setelah pembayaran ");
+  L.push("✅ Min Purchase 50 (Loose Pack)/ 2 (Box/ Bundle) ");
+  L.push("✅ Butuh Menu Lain? Gas PO 🚀🚀🚀");
+  L.push("✅ 100% Trusted, Barang gak ada? GARANSI FULL REFUND ");
+  L.push("");
+  L.push("Gas sebelum sold out!");
+  return L.join(String.fromCharCode(10));
+}
+function menuFallbackCopy(t){
+  try{ var ta=document.createElement("textarea"); ta.value=t; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
+  }catch(e){}
+}
+function renderMenu(){
+  var ready=menuState.tab==="ready";
+  var noPrice=arr(products).filter(function(p){ return !(+p.supplierPrice>0); }).length;
+  var seg='<div class="seg" id="menuSeg">'
+    +'<button data-v="ready"'+(ready?' class="on"':'')+'>Ready stock</button>'
+    +'<button data-v="all"'+(!ready?' class="on"':'')+'>All products</button></div>';
+  var text=buildMenuText(ready);
+  el("sec-menu").innerHTML=
+    '<div class="sec-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">'
+      +'<div class="sec-title" style="margin:0;">Supplier menu</div>'+seg+'</div>'
+    +'<div class="card">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;">'
+        +'<span class="mg-count" style="margin:0;">Auto-dated · supplier prices · '+(ready?"in-stock only":"every priced product")
+          +(noPrice?(' · <span class="warnc">'+num(noPrice)+' product'+(noPrice===1?"":"s")+' hidden (no supplier price)</span>'):'')+'</span>'
+        +'<button class="mg-btn primary" id="menuCopy" type="button">📋 Copy menu</button>'
+      +'</div>'
+      +'<pre id="menuText" style="white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Menlo,monospace;font-size:13.5px;line-height:1.6;margin:0;background:var(--panel-b);border:1px solid var(--border);border-radius:12px;padding:18px;">'+esc(text)+'</pre>'
+    +'</div>';
+  Array.prototype.forEach.call(el("menuSeg").querySelectorAll("button"),function(b){
+    b.addEventListener("click",function(){ menuState.tab=b.getAttribute("data-v"); renderMenu(); });
+  });
+  el("menuCopy").addEventListener("click",function(){
+    var t=el("menuText").textContent, c=el("menuCopy");
+    function done(){ c.textContent="✅ Copied!"; setTimeout(function(){ c.textContent="📋 Copy menu"; },1500); }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).then(done,function(){ menuFallbackCopy(t); done(); });
+    } else { menuFallbackCopy(t); done(); }
+  });
+}
+
 /* ===================== FOOTER ===================== */
 function signOut(){
   try{ localStorage.removeItem("pokehit_auth"); }catch(e){}
@@ -2095,6 +2196,7 @@ function boot(){
 
   buildTabs();
   renderOverview();
+  renderMenu();
   renderModal();
   renderSales();
   renderByDate();
