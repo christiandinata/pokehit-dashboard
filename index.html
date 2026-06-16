@@ -2744,6 +2744,7 @@ MG.sales = {
            +'<button class="mg-btn" id="mgSaleReload" type="button" title="Reload">↻</button>'
            +'<button class="mg-btn primary" id="mgSaleAdd" type="button">＋ New sale</button>'
          +'</div>'
+         +'<div class="ttotals" id="mgSaleTotals" style="margin:2px 0 12px;"></div>'
          +'<div class="mg-count"><span id="mgSaleCount"></span>'
            +'<span style="margin-left:8px;color:var(--muted);font-weight:400;">· 🖱️ click a row to edit · ☑️ tick boxes to bulk-edit</span></div>'
          +'<div id="mgSaleBulk"></div>'
@@ -2805,6 +2806,17 @@ MG.sales = {
     var total=all.length, ps=st.pageSize||100, pages=Math.max(1, Math.ceil(total/ps));
     if(st.page>pages) st.page=pages; if(st.page<1) st.page=1;
     var start=(st.page-1)*ps, rows=all.slice(start, start+ps);
+    // Totals over the WHOLE filtered set (all pages / date range), not just this page.
+    var tRev=0, tCogs=0, tUnits=0;
+    all.forEach(function(s){ tRev+=+s.total_idr||0; tCogs+=+s.cogs_total_idr||0; tUnits+=+s.quantity||0; });
+    var tProfit=tRev-tCogs, tMargin=tRev>0?(tProfit/tRev*100):0;
+    el("mgSaleTotals").innerHTML=
+      '<div class="ttotal"><div class="t">Sales</div><div class="v num">'+num(total)+'</div></div>'
+     +'<div class="ttotal"><div class="t">Units</div><div class="v num">'+num(tUnits)+'</div></div>'
+     +'<div class="ttotal"><div class="t">Revenue</div><div class="v num">'+money(tRev)+'</div></div>'
+     +'<div class="ttotal"><div class="t">COGS</div><div class="v num">'+money(tCogs)+'</div></div>'
+     +'<div class="ttotal"><div class="t">Profit</div><div class="v num '+marginClass(tMargin)+'">'+money(tProfit)+'</div></div>'
+     +'<div class="ttotal"><div class="t">Margin</div><div class="v num '+marginClass(tMargin)+'">'+pct(tMargin)+'</div></div>';
     el("mgSaleCount").textContent = total
       ? ("Showing "+num(start+1)+"–"+num(start+rows.length)+" of "+num(total)+(total!==st.rows.length?(" (of "+num(st.rows.length)+" total)"):"")+" sales")
       : ("0 of "+num(st.rows.length)+" sales");
