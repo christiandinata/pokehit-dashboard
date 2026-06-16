@@ -2117,17 +2117,24 @@ function renderMenu(){
       +'<div class="sec-title" style="margin:0;">Supplier menu</div>'+seg+'</div>'
     +'<div class="card">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;">'
-        +'<span class="mg-count" style="margin:0;">Auto-dated · supplier prices · '+(ready?"in-stock only":"every priced product")
+        +'<span class="mg-count" style="margin:0;">✏️ Editable · auto-dated · supplier prices · '+(ready?"in-stock only":"every priced product")
           +(noPrice?(' · <span class="warnc">'+num(noPrice)+' product'+(noPrice===1?"":"s")+' hidden (no supplier price)</span>'):'')+'</span>'
-        +'<button class="mg-btn primary" id="menuCopy" type="button">📋 Copy menu</button>'
+        +'<span style="display:flex;gap:8px;">'
+          +'<button class="mg-btn" id="menuReset" type="button">↻ Reset</button>'
+          +'<button class="mg-btn primary" id="menuCopy" type="button">📋 Copy menu</button>'
+        +'</span>'
       +'</div>'
-      +'<pre id="menuText" style="white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Menlo,monospace;font-size:13.5px;line-height:1.6;margin:0;background:var(--panel-b);border:1px solid var(--border);border-radius:12px;padding:18px;">'+esc(text)+'</pre>'
+      +'<textarea id="menuText" spellcheck="false" style="width:100%;min-height:540px;resize:vertical;font-family:ui-monospace,Menlo,monospace;font-size:13.5px;line-height:1.6;color:var(--text);background:var(--panel-b);border:1px solid var(--border);border-radius:12px;padding:18px;outline:none;box-sizing:border-box;">'+esc(text)+'</textarea>'
     +'</div>';
   Array.prototype.forEach.call(el("menuSeg").querySelectorAll("button"),function(b){
     b.addEventListener("click",function(){ menuState.tab=b.getAttribute("data-v"); renderMenu(); });
   });
+  el("menuReset").addEventListener("click",function(){
+    el("menuText").value=buildMenuText(menuState.tab==="ready");
+    var r=el("menuReset"); r.textContent="✅ Reset"; setTimeout(function(){ r.textContent="↻ Reset"; },1200);
+  });
   el("menuCopy").addEventListener("click",function(){
-    var t=el("menuText").textContent, c=el("menuCopy");
+    var t=el("menuText").value, c=el("menuCopy");
     function done(){ c.textContent="✅ Copied!"; setTimeout(function(){ c.textContent="📋 Copy menu"; },1500); }
     if(navigator.clipboard && navigator.clipboard.writeText){
       navigator.clipboard.writeText(t).then(done,function(){ menuFallbackCopy(t); done(); });
