@@ -3411,10 +3411,12 @@ MG.invoices = {
             +'<div class="mg-foot">'
               +'<button class="mg-btn danger" id="mgIvDel" type="button">🗑 Delete</button>'
               +'<span class="grow"></span>'
+              +'<button class="mg-btn" id="mgIvEdit" type="button">✏️ Edit</button>'
               +'<button class="mg-btn" id="mgIvClose" type="button">🔒 Close</button>'
               +'<button class="mg-btn primary" id="mgIvPay" type="button">💵 Record payment</button>'
             +'</div>';
 
+          body.querySelector("#mgIvEdit").addEventListener("click",function(){ close(); self.editModal(id); });
           body.querySelector("#mgIvPay").addEventListener("click",function(){ close(); self.payModal(inv, outstanding); });
           body.querySelector("#mgIvClose").addEventListener("click",function(){
             close();
@@ -3435,6 +3437,82 @@ MG.invoices = {
         }).catch(function(err){ body.innerHTML='<div class="empty">'+esc(err.message)+'</div>'; });
       }
     });
+  },
+
+  editModal:function(id){
+    var self=this;
+    MG.api("invoices.get",{id:id}).then(function(d){
+      d=d||{};
+      var inv=d.invoice||d, lines=arr(d.lines);
+      var ccy=inv.currency||"IDR";
+      // implied FX rate from an existing line, so edited/new costs convert to IDR consistently.
+      var rate=1, i;
+      for(i=0;i<lines.length;i++){ if(+lines[i].cost_per_unit>0 && +lines[i].cost_per_unit_idr>0){ rate=(+lines[i].cost_per_unit_idr)/(+lines[i].cost_per_unit); break; } }
+      var work=lines.map(function(l){ return {id:l.id, product_id:l.product_id, qty:+l.quantity_ordered||0, cost:+l.cost_per_unit||0, del:false, isNew:false}; });
+      MG.loadCatalog().then(function(){
+        MG.modal({ title:"✏️ Edit invoice #"+id, wide:true,
+          sub:"👤 "+esc(inv.supplier_name||MG.partyName(inv.supplier_id))+" · "+esc(ccy)+(ccy!=="IDR"?(" · IDR = native × "+(Math.round(rate*100)/100)):""),
+          body:'<div class="mg-form">'
+            +'<div class="mg-grid2">'+MG.f.date("mgIeDate","Invoice date",MG.dstr(inv.invoice_date))+MG.f.text("mgIeNotes","Notes",inv.notes||"")+'</div>'
+            +'<div class="ctl-lbl" style="margin:10px 0 6px;">Lines — edit qty / cost, or 🗑 remove</div>'
+            +'<div class="tscroll"><table class="mg compact"><thead><tr><th>Product</th><th>Qty</th><th>Cost/u ('+esc(ccy)+')</th><th></th></tr></thead><tbody id="mgIeBody"></tbody></table></div>'
+            +'<div class="ctl-lbl" style="margin:14px 0 6px;">Add a line</div>'
+            +'<div class="fld">'+MG.pickerHtml("mgIeProd")+'</div>'
+            +'<div class="mg-grid2">'+MG.f.num("mgIeQty","Quantity","",1)+MG.f.num("mgIeCost","Cost/u ("+ccy+")","",0.01)+'</div>'
+            +'<button class="mg-btn" id="mgIeAdd" type="button" style="margin-top:8px;">➕ Add line</button>'
+            +'<div class="mg-err" id="mgIeErr"></div>'
+            +'<div class="mg-foot"><button class="mg-btn" id="mgIeCancel" type="button">Cancel</button>'
+            +'<button class="mg-btn primary" id="mgIeSave" type="button">Save changes</button></div>'
+          +'</div>',
+          onMount:function(body, close){
+            function paintLines(){
+              var b=body.querySelector("#mgIeBody");
+              var html=work.map(function(w,idx){
+                if(w.del) return '';
+                return '<tr><td style="text-align:left;">🎴 '+esc(MG.prodLabelById(w.product_id))+(w.isNew?' <span style="color:var(--green);font-size:11px;">new</span>':'')+'</td>'
+                  +'<td><input class="inp num" data-q="'+idx+'" value="'+esc(w.qty)+'" style="width:88px;"></td>'
+                  +'<td><input class="inp num" data-c="'+idx+'" value="'+esc(w.cost)+'" style="width:108px;"></td>'
+                  +'<td><button class="mg-iconbtn" data-del="'+idx+'" title="Remove">🗑️</button></td></tr>';
+              }).join("");
+              b.innerHTML=html||'<tr><td colspan="4" class="empty">No lines — add one below.</td></tr>';
+              Array.prototype.forEach.call(b.querySelectorAll("[data-q]"),function(inp){ inp.addEventListener("input",function(){ work[+inp.getAttribute("data-q")].qty=MG.parseMoney(inp.value); }); });
+              Array.prototype.forEach.call(b.querySelectorAll("[data-c]"),function(inp){ inp.addEventListener("input",function(){ work[+inp.getAttribute("data-c")].cost=+inp.value||0; }); });
+              Array.prototype.forEach.call(b.querySelectorAll("[data-del]"),function(btn){ btn.addEventListener("click",function(){ work[+btn.getAttribute("data-del")].del=true; paintLines(); }); });
+            }
+            paintLines();
+            MG.wirePicker(body,"mgIeProd",function(){});
+            body.querySelector("#mgIeAdd").addEventListener("click",function(){
+              var err=body.querySelector("#mgIeErr"); err.textContent="";
+              var pid=MG.pickerVal(body,"mgIeProd"), q=MG.parseMoney(MG.v(body,"mgIeQty")), c=+MG.v(body,"mgIeCost")||0;
+              if(!pid){ err.textContent="Pick a product to add."; return; }
+              if(!q){ err.textContent="Quantity required for the new line."; return; }
+              work.push({id:null,product_id:+pid,qty:q,cost:c,del:false,isNew:true});
+              body.querySelector("#mgIeQty").value=""; body.querySelector("#mgIeCost").value="";
+              paintLines();
+            });
+            body.querySelector("#mgIeCancel").addEventListener("click",close);
+            body.querySelector("#mgIeSave").addEventListener("click",function(){
+              var err=body.querySelector("#mgIeErr"); err.textContent="";
+              var payload={id:id}, upd=[], add=[], del=[];
+              var date=MG.v(body,"mgIeDate"); if(date && date!==MG.dstr(inv.invoice_date)) payload.invoice_date=date;
+              var notes=MG.v(body,"mgIeNotes").trim(); if(notes!==(inv.notes||"")) payload.notes=notes;
+              work.forEach(function(w){
+                if(w.id==null){ if(!w.del && w.qty>0) add.push({product_id:w.product_id, quantity_ordered:w.qty, cost_per_unit:w.cost, cost_per_unit_idr:Math.round(w.cost*rate)}); }
+                else if(w.del){ del.push(w.id); }
+                else { upd.push({id:w.id, quantity_ordered:w.qty, cost_per_unit:w.cost, cost_per_unit_idr:Math.round(w.cost*rate)}); }
+              });
+              if(add.length) payload.add_lines=add;
+              if(upd.length) payload.update_lines=upd;
+              if(del.length) payload.delete_line_ids=del;
+              if(payload.invoice_date===undefined && payload.notes===undefined && !add.length && !upd.length && !del.length){ close(); return; }
+              var btn=body.querySelector("#mgIeSave"); btn.disabled=true; btn.textContent="Saving…";
+              MG.api("invoices.update",payload).then(function(){ close(); MG.toast("Invoice #"+id+" updated","ok"); self.fetch(); MG.loadCatalog(true); })
+                .catch(function(e){ btn.disabled=false; btn.textContent="Save changes"; err.textContent=e.message; });
+            });
+          }
+        });
+      }).catch(MG.fail);
+    }).catch(MG.fail);
   },
 
   payModal:function(inv, outstanding){
