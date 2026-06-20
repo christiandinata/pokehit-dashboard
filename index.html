@@ -1017,7 +1017,10 @@ function renderModal(){
     }
     var body;
     if(src==="none"){
-      body = '<div class="nostock" style="font-style:normal;color:var(--muted);">No cost data yet (on-order only).</div>';
+      body = arr(p.modalBatches).length
+        ? '<div class="nostock" style="font-style:normal;color:var(--muted);">Not received yet · on-order cost is the buy price (shipping not booked).</div>'
+            +'<div class="detail">'+batchTable(p)+'</div>'
+        : '<div class="nostock" style="font-style:normal;color:var(--muted);">No cost data yet.</div>';
     } else if(src==="historical"){
       body = modalLine(p)
         +'<div class="nostock" style="font-style:normal;color:var(--muted);">Sold out · modal shown is the last-known landed cost.</div>'
