@@ -969,6 +969,19 @@ function batchTable(p){
     return '<div class="empty">No cost batches.</div>';
   }
   var rows=batches.map(function(b){
+    if(b && b.onOrder){
+      var oqty = +b.qtyRemaining||0;
+      var osrc = b.invoiceId ? ('🧾 #'+b.invoiceId+(b.supplier?(' · '+esc(b.supplier)):'')) : '—';
+      return '<tr style="opacity:.78;">'
+        +'<td>'+esc(b.label||"On order")+' <span style="font-size:10px;color:var(--warn,#e0a82e);">⏳ on order</span></td>'
+        +'<td style="text-align:left;white-space:nowrap;">'+osrc+'</td>'
+        +'<td>'+esc(b.date||"—")+'</td>'
+        +'<td class="num"><span style="color:var(--muted);">—</span></td>'
+        +'<td class="num"><span style="color:var(--warn,#e0a82e);">'+num(oqty)+'</span></td>'
+        +'<td class="num">'+money(b.buyPerUnit)+'</td>'
+        +'<td class="num"><span style="color:var(--muted);">not booked</span></td>'
+        +'<td class="num">'+money(b.landedPerUnit)+'</td></tr>';
+    }
     var histTag = b && b.historical ? ' <span style="font-size:10px;color:var(--muted);">(last known)</span>' : '';
     var src = b.invoiceId ? ('🧾 #'+b.invoiceId+(b.supplier?(' · '+esc(b.supplier)):'')) : '—';
     var received = (b.qtyInitial!=null) ? num(b.qtyInitial) : num(b.qtyRemaining);
