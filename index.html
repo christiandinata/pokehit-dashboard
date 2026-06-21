@@ -3752,10 +3752,12 @@ MG.ship = {
             +'<div class="mg-foot">'
               +'<button class="mg-btn danger" id="mgShDel" type="button">🗑 Delete</button>'
               +'<span class="grow"></span>'
+              +'<button class="mg-btn" id="mgShEdit" type="button">✏️ Edit</button>'
               +(sh.stock_status==="in_transit"?'<button class="mg-btn primary" id="mgShArr" type="button">🏠 Mark arrived</button>':'')
             +'</div>';
           var arrBtn=body.querySelector("#mgShArr");
           if(arrBtn) arrBtn.addEventListener("click",function(){ close(); self.arrive(id); });
+          body.querySelector("#mgShEdit").addEventListener("click",function(){ close(); self.edit(id); });
           body.querySelector("#mgShDel").addEventListener("click",function(){
             close();
             MG.confirmBox("Delete shipment #"+id+"?","Its quantities return to ⏳ on order. Fails if FIFO sales already consumed its stock.")
@@ -3767,6 +3769,124 @@ MG.ship = {
         }).catch(function(err){ body.innerHTML='<div class="empty">'+esc(err.message)+'</div>'; });
       }
     });
+  },
+
+  edit:function(id){
+    var self=this;
+    MG.api("shipments.get",{id:id}).then(function(d){
+      d=d||{};
+      var sh=d.shipment||d, lines=arr(d.lines);
+      // work item: {id:shipment_line_id|null, product_id, invoice_id, invoice_line_id, qty, del, isNew}
+      var work=lines.map(function(l){
+        return { id:l.shipment_line_id, product_id:l.product_id, invoice_id:l.invoice_id,
+                 invoice_line_id:l.invoice_line_id, qty:+l.quantity||0, del:false, isNew:false };
+      });
+      var arrived=sh.stock_status==="in_warehouse";
+      MG.loadCatalog().then(function(){
+        MG.modal({ title:"✏️ Edit shipment #"+id, wide:true,
+          sub:self.statusChip(sh.stock_status)+(arrived?" · editing an arrived shipment recomputes warehouse stock & landed cost":""),
+          body:'<div class="mg-form">'
+            +'<div class="mg-grid3">'
+              +MG.f.date("mgSeDate","Shipment date",MG.dstr(sh.shipment_date))
+              +MG.f.num("mgSeCost","Direct shipping cost (IDR)",+sh.shipping_cost_idr||0,1000)
+              +MG.f.text("mgSeLabel","Label",sh.label||"","optional")
+            +'</div>'
+            +(arrived?'<div class="mg-grid2">'+MG.f.date("mgSeArr","Arrived date",MG.dstr(sh.arrived_date))+MG.f.text("mgSeNotes","Notes",sh.notes||"","optional")+'</div>'
+                     :'<div class="fld">'+MG.f.text("mgSeNotes","Notes",sh.notes||"","optional")+'</div>')
+            +'<div class="ctl-lbl" style="margin:10px 0 6px;">Lines — edit qty (capped at invoice open + this line), or 🗑 remove</div>'
+            +'<div class="tscroll"><table class="mg compact"><thead><tr><th>Product</th><th>Invoice</th><th>Qty</th><th></th></tr></thead><tbody id="mgSeBody"></tbody></table></div>'
+            +'<div class="ctl-lbl" style="margin:14px 0 6px;">Add a line from an invoice</div>'
+            +MG.f.sel("mgSeInv","Invoice",[{v:"",l:"Loading…"}],"")
+            +'<div id="mgSeInvLines"></div>'
+            +'<div class="mg-err" id="mgSeErr"></div>'
+            +'<div class="mg-foot"><button class="mg-btn" id="mgSeCancel" type="button">Cancel</button>'
+            +'<button class="mg-btn primary" id="mgSeSave" type="button">Save changes</button></div>'
+          +'</div>',
+          onMount:function(body, close){
+            function paintLines(){
+              var b=body.querySelector("#mgSeBody");
+              b.innerHTML=work.map(function(w,idx){
+                if(w.del) return '';
+                return '<tr><td style="text-align:left;">🎴 '+esc(MG.prodLabelById(w.product_id))+(w.isNew?' <span style="color:var(--green);font-size:11px;">new</span>':'')+'</td>'
+                  +'<td>🧾 #'+esc(w.invoice_id!=null?w.invoice_id:"—")+'</td>'
+                  +'<td><input class="inp num" data-q="'+idx+'" value="'+esc(w.qty)+'" style="width:88px;"></td>'
+                  +'<td><button class="mg-iconbtn" data-del="'+idx+'" title="Remove">🗑️</button></td></tr>';
+              }).join("")||'<tr><td colspan="4" class="empty">No lines — add one below.</td></tr>';
+              Array.prototype.forEach.call(b.querySelectorAll("[data-q]"),function(inp){ inp.addEventListener("input",function(){ work[+inp.getAttribute("data-q")].qty=MG.parseMoney(inp.value); }); });
+              Array.prototype.forEach.call(b.querySelectorAll("[data-del]"),function(btn){ btn.addEventListener("click",function(){ work[+btn.getAttribute("data-del")].del=true; paintLines(); }); });
+            }
+            paintLines();
+            // add-line: pick invoice -> show its open lines (+ qty already shipped on THIS shipment counts as available again)
+            function loadInvoiceLines(invId){
+              var box=body.querySelector("#mgSeInvLines");
+              if(!invId){ box.innerHTML=""; return; }
+              box.innerHTML=MG.skel(2);
+              MG.api("invoices.get",{id:+invId}).then(function(dd){
+                dd=dd||{};
+                var ils=arr(dd.lines), ful={}; arr(dd.fulfillment).forEach(function(f){ ful[f.invoice_line_id]=f; });
+                var open=ils.map(function(l){
+                  var f=ful[l.id]||{};
+                  var rem=(f.quantity_remaining!=null)?f.quantity_remaining:((l.quantity_remaining!=null)?l.quantity_remaining:l.quantity_ordered);
+                  return { line:l, rem:+rem||0 };
+                }).filter(function(x){ return x.rem>0; });
+                if(!open.length){ box.innerHTML='<div class="empty">No open quantity left on this invoice.</div>'; return; }
+                box.innerHTML='<div class="mg-stage">'+open.map(function(x,i){
+                  return '<div class="sline"><span>🎴 '+esc(MG.prodLabelById(x.line.product_id))+' <span style="color:var(--muted);">⏳ '+num(x.rem)+' open</span></span>'
+                    +'<span><input class="inp" style="width:74px;min-height:32px;padding:5px 8px;" type="number" min="1" max="'+x.rem+'" value="'+x.rem+'" id="mgSeOq'+i+'">'
+                    +' <button class="mg-btn sm" data-stg="'+i+'" type="button">Add</button></span></div>';
+                }).join("")+'</div>';
+                Array.prototype.forEach.call(box.querySelectorAll("[data-stg]"),function(btn){
+                  btn.addEventListener("click",function(){
+                    var i=+btn.getAttribute("data-stg"), x=open[i];
+                    var q=MG.parseMoney(body.querySelector("#mgSeOq"+i).value);
+                    if(q<1||q>x.rem){ MG.toast("Quantity must be 1–"+x.rem,"err"); return; }
+                    // merge into an existing (non-deleted) line for the same invoice line, else add new
+                    var found=null;
+                    work.forEach(function(w){ if(!w.del && w.invoice_line_id===x.line.id) found=w; });
+                    if(found) found.qty=(+found.qty||0)+q;
+                    else work.push({ id:null, product_id:x.line.product_id, invoice_id:x.line.invoice_id||+invId, invoice_line_id:x.line.id, qty:q, del:false, isNew:true });
+                    paintLines();
+                    MG.toast("Added "+q+" × "+MG.prodLabelById(x.line.product_id),"ok");
+                  });
+                });
+              }).catch(function(e){ box.innerHTML='<div class="empty">'+esc(e.message)+'</div>'; });
+            }
+            MG.api("invoices.list",{}).then(function(dd){
+              var invs=arr((dd||{}).invoices||dd);
+              var sel=body.querySelector("#mgSeInv");
+              sel.innerHTML='<option value="">— pick an invoice —</option>'+invs.map(function(r){
+                return '<option value="'+r.id+'">#'+r.id+' · '+esc(r.supplier_name||MG.partyName(r.supplier_id))+' · '+esc(MG.dstr(r.invoice_date))+'</option>';
+              }).join("");
+              sel.addEventListener("change",function(e){ loadInvoiceLines(e.target.value); });
+            }).catch(function(e){ body.querySelector("#mgSeErr").textContent=e.message; });
+
+            body.querySelector("#mgSeCancel").addEventListener("click",close);
+            body.querySelector("#mgSeSave").addEventListener("click",function(){
+              var err=body.querySelector("#mgSeErr"); err.textContent="";
+              var payload={id:id}, upd=[], add=[], del=[];
+              var date=MG.v(body,"mgSeDate"); if(date && date!==MG.dstr(sh.shipment_date)) payload.shipment_date=date;
+              var label=MG.v(body,"mgSeLabel").trim(); if(label!==(sh.label||"")) payload.label=label;
+              var notes=MG.v(body,"mgSeNotes").trim(); if(notes!==(sh.notes||"")) payload.notes=notes;
+              var cost=MG.parseMoney(MG.v(body,"mgSeCost")); if(cost!==(+sh.shipping_cost_idr||0)) payload.shipping_cost_idr=cost;
+              if(arrived){ var ad=MG.v(body,"mgSeArr"); if(ad && ad!==MG.dstr(sh.arrived_date)) payload.arrived_date=ad; }
+              work.forEach(function(w){
+                if(w.id==null){ if(!w.del && w.qty>0) add.push({invoice_line_id:w.invoice_line_id, quantity:w.qty}); }
+                else if(w.del){ del.push(w.id); }
+                else { upd.push({id:w.id, quantity:w.qty}); }
+              });
+              if(add.length) payload.add_lines=add;
+              if(upd.length) payload.update_lines=upd;
+              if(del.length) payload.delete_line_ids=del;
+              var hdr=(payload.shipment_date!==undefined||payload.label!==undefined||payload.notes!==undefined||payload.shipping_cost_idr!==undefined||payload.arrived_date!==undefined);
+              if(!hdr && !add.length && !upd.length && !del.length){ close(); return; }
+              var btn=body.querySelector("#mgSeSave"); btn.disabled=true; btn.textContent="Saving…";
+              MG.api("shipments.update",payload).then(function(){ close(); MG.toast("Shipment #"+id+" updated","ok"); self.fetch(); MG.loadCatalog(true); })
+                .catch(function(e){ btn.disabled=false; btn.textContent="Save changes"; err.textContent=e.message; });
+            });
+          }
+        });
+      }).catch(MG.fail);
+    }).catch(MG.fail);
   },
 
   arrive:function(id){
