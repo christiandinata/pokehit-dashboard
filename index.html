@@ -1864,16 +1864,25 @@ function sbProduct(){
 }
 function renderSandbox(){
   if(!products.length){ el("sec-sandbox").innerHTML='<div class="empty">No products.</div>'; return; }
-  var prodOpts=products.map(function(p){
-    return '<option value="'+esc(p.productId)+'">'+esc(prodName(p))+'</option>';
-  }).join("");
   el("sec-sandbox").innerHTML=
-    '<div class="note">A what-if playground. Pick a product, then <b>drag the sliders</b> to see what happens '
+    '<style>'
+    +'.sb-combo{position:relative;flex:1;min-width:0;}'
+    +'.sb-menu{position:absolute;left:0;right:0;top:100%;z-index:40;margin-top:4px;max-height:300px;overflow:auto;'
+      +'background:var(--card,#0f1623);border:1px solid var(--line,#243044);border-radius:10px;box-shadow:0 12px 34px rgba(0,0,0,.45);}'
+    +'.sb-mi{padding:9px 13px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-bottom:1px solid rgba(255,255,255,.03);}'
+    +'.sb-mi:hover{background:var(--accent-weak,rgba(56,132,255,.16));}'
+    +'.sb-mi.on{color:var(--accent,#5b9dff);font-weight:600;}'
+    +'.sb-mi.empty{color:var(--muted);cursor:default;}'
+    +'</style>'
+    +'<div class="note">A what-if playground. Pick a product, then <b>drag the sliders</b> to see what happens '
     +'to your profit and margin instantly. Cost basis is the product\'s real landed modal.</div>'
    +'<div class="sec-title">Profit calculator</div>'
    +'<div class="card">'
      +'<div class="ctl-row" style="margin-bottom:10px;"><span class="ctl-lbl">Product</span>'
-       +'<select class="dd" id="sbProduct">'+prodOpts+'</select></div>'
+       +'<div class="sb-combo" id="sbProdCombo">'
+         +'<input class="inp" id="sbProdSearch" type="search" autocomplete="off" placeholder="🔍 Search product…" style="width:100%;">'
+         +'<div class="sb-menu" id="sbProdMenu" style="display:none;"></div>'
+       +'</div></div>'
      +'<div id="sbBasis" class="sb-hint" style="margin-bottom:8px;"></div>'
      +'<div class="ctl-row"><span class="ctl-lbl">Sell price per unit</span>'
        +'<input class="inp" id="sbPriceN" type="number" inputmode="numeric" min="0" step="1000">'
@@ -1953,7 +1962,32 @@ function renderSandbox(){
   el("sbTgtN").value=sbState.targetMargin; el("sbTgtR").value=sbState.targetMargin;
   recalcAll();
 
-  el("sbProduct").addEventListener("change",function(e){ sbState.product=e.target.value; loadDefaults(); recalcAll(); });
+  // searchable product combo
+  function sbRenderMenu(filter){
+    var q=(filter||"").toLowerCase().trim();
+    var list=products.filter(function(p){ return !q || prodName(p).toLowerCase().indexOf(q)>=0; });
+    var menu=el("sbProdMenu");
+    if(!list.length){ menu.innerHTML='<div class="sb-mi empty">No match</div>'; return; }
+    menu.innerHTML=list.map(function(p){
+      var on=String(p.productId)===String(sbProduct()&&sbProduct().productId);
+      return '<div class="sb-mi'+(on?' on':'')+'" data-pid="'+esc(p.productId)+'">'+esc(prodName(p))+'</div>';
+    }).join("");
+    Array.prototype.forEach.call(menu.querySelectorAll("[data-pid]"),function(it){
+      it.addEventListener("mousedown",function(ev){ ev.preventDefault(); sbPick(it.getAttribute("data-pid")); });
+    });
+  }
+  function sbPick(pid){
+    sbState.product=pid;
+    el("sbProdSearch").value=prodName(sbProduct());
+    el("sbProdMenu").style.display="none";
+    loadDefaults(); recalcAll();
+  }
+  el("sbProdSearch").value=prodName(sbProduct());
+  el("sbProdSearch").addEventListener("focus",function(){ this.select(); sbRenderMenu(""); el("sbProdMenu").style.display="block"; });
+  el("sbProdSearch").addEventListener("input",function(){ sbRenderMenu(this.value); el("sbProdMenu").style.display="block"; });
+  el("sbProdSearch").addEventListener("blur",function(){
+    var inp=this; setTimeout(function(){ var m=el("sbProdMenu"); if(m) m.style.display="none"; if(inp) inp.value=prodName(sbProduct()); },150);
+  });
   el("sbPriceN").addEventListener("input",function(e){ sbState.price=+e.target.value||0; el("sbPriceR").value=sbState.price; recalc(); });
   el("sbPriceR").addEventListener("input",function(e){ sbState.price=+e.target.value||0; el("sbPriceN").value=sbState.price; recalc(); });
   el("sbQtyN").addEventListener("input",function(e){ sbState.qty=+e.target.value||0; el("sbQtyR").value=sbState.qty; recalc(); });
@@ -2259,7 +2293,9 @@ function renderFoot(){
 /* ===================== BOOT ===================== */
 function boot(){
   pnl = D.pnl||{}; bal = D.balance||{};
-  products = arr(D.products);
+  products = arr(D.products).sort(function(a,b){
+    return prodName(a).toLowerCase().localeCompare(prodName(b).toLowerCase());
+  });
   monthly = arr(D.monthly);
   opex = arr(D.opex);
   capital = arr(D.capital);
