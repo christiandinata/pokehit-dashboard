@@ -1856,11 +1856,18 @@ function refreshExLedger(){
 }
 
 /* ===================== SANDBOX ===================== */
-var sbState = { product:null, price:0, qty:0, targetMargin:30 };
+var sbState = { product:null, price:0, qty:0, targetMargin:30, batch:"" };
 
 function sbProduct(){
   if(sbState.product==null) return products[0]||null;
   return products.filter(function(p){return String(p.productId)===String(sbState.product);})[0]||products[0]||null;
+}
+function sbBatches(p){ return (p && p.modalBatches && p.modalBatches.length) ? p.modalBatches : []; }
+// cost basis = a specific batch's landed cost when one is picked, else the avg landed modal
+function sbLanded(p){
+  var bs=sbBatches(p);
+  if(sbState.batch!=="" && sbState.batch!=null && bs[+sbState.batch]) return +bs[+sbState.batch].landedPerUnit||0;
+  return +p.modalLanded||0;
 }
 function renderSandbox(){
   if(!products.length){ el("sec-sandbox").innerHTML='<div class="empty">No products.</div>'; return; }
@@ -1883,6 +1890,8 @@ function renderSandbox(){
          +'<input class="inp" id="sbProdSearch" type="search" autocomplete="off" placeholder="🔍 Search product…" style="width:100%;">'
          +'<div class="sb-menu" id="sbProdMenu" style="display:none;"></div>'
        +'</div></div>'
+     +'<div class="ctl-row" style="margin-bottom:10px;"><span class="ctl-lbl">Cost basis</span>'
+       +'<select class="dd" id="sbBatch" style="flex:1;min-width:0;"></select></div>'
      +'<div id="sbBasis" class="sb-hint" style="margin-bottom:8px;"></div>'
      +'<div class="ctl-row"><span class="ctl-lbl">Sell price per unit</span>'
        +'<input class="inp" id="sbPriceN" type="number" inputmode="numeric" min="0" step="1000">'
@@ -1904,10 +1913,39 @@ function renderSandbox(){
      +'<div class="sb-out" id="sbTgtOut" style="grid-template-columns:repeat(2,1fr);"></div>'
    +'</div>';
 
-  // init defaults from first product
+  // rebuild the batch dropdown for the current product (avg + one row per batch)
+  function fillBatches(){
+    var p=sbProduct(), bs=sbBatches(p), sel=el("sbBatch");
+    if(!sel) return;
+    if(!bs.length){ sel.innerHTML='<option value="">Average landed</option>'; sel.disabled=true; sbState.batch=""; return; }
+    sel.disabled=false;
+    var opts='<option value="">⌀ Average landed ('+money(+p.modalLanded||0)+')</option>';
+    opts+=bs.map(function(b,i){
+      var nm=b.label||("#"+(b.shipmentId||i));
+      var tag=b.onOrder?' · on order (buy only)':(b.qtyRemaining!=null?(' · '+num(b.qtyRemaining)+' left'):'');
+      return '<option value="'+i+'">'+esc(nm)+' · '+money(+b.landedPerUnit||0)+tag+'</option>';
+    }).join("");
+    sel.innerHTML=opts;
+    sel.value=(sbState.batch==null?"":sbState.batch);
+  }
+  function updateBasis(){
+    var p=sbProduct(), bs=sbBatches(p), landed=sbLanded(p);
+    var picked=(sbState.batch!=="" && sbState.batch!=null && bs[+sbState.batch]);
+    var extra='';
+    if(picked){
+      var b=bs[+sbState.batch];
+      extra=' <span style="color:var(--muted);">(buy '+money(+b.buyPerUnit||0)+' + ship/fee '+money(+b.shipFeePerUnit||0)+')</span>';
+    }
+    el("sbBasis").innerHTML='Cost basis '+(picked?'(selected batch)':'(avg landed)')+': <b>'+money(landed)+'</b> / unit'+extra
+      +(p.retailPrice?(' · retail '+money(p.retailPrice)):'')
+      +(p.supplierPrice?(' · supplier '+money(p.supplierPrice)):'');
+  }
+  // init defaults from current product (also resets the basis to average)
   function loadDefaults(){
     var p=sbProduct();
-    var landed=+p.modalLanded||0;
+    sbState.batch="";
+    fillBatches();
+    var landed=sbLanded(p);
     var defPrice=Math.round(+p.retailPrice || (landed*1.2) || 0);
     var defQty=Math.max(1, Math.round(+p.inWarehouse || 10));
     sbState.price=defPrice; sbState.qty=defQty;
@@ -1915,13 +1953,11 @@ function renderSandbox(){
     var qtyMax=Math.max(defQty*4, 50);
     el("sbPriceN").value=defPrice; el("sbPriceR").max=priceMax; el("sbPriceR").value=defPrice;
     el("sbQtyN").value=defQty; el("sbQtyR").max=qtyMax; el("sbQtyR").value=defQty;
-    el("sbBasis").innerHTML='Cost basis (landed): <b>'+money(landed)+'</b> / unit'
-      +(p.retailPrice?(' · retail '+money(p.retailPrice)):'')
-      +(p.supplierPrice?(' · supplier '+money(p.supplierPrice)):'');
+    updateBasis();
   }
   function recalc(){
     var p=sbProduct();
-    var landed=+p.modalLanded||0;
+    var landed=sbLanded(p);
     var price=+sbState.price||0, qty=+sbState.qty||0;
     var revenue=price*qty, cogs=landed*qty, profit=revenue-cogs;
     var margin=revenue>0?(profit/revenue*100):0;
@@ -1947,7 +1983,7 @@ function renderSandbox(){
   }
   function recalcTarget(){
     var p=sbProduct();
-    var landed=+p.modalLanded||0;
+    var landed=sbLanded(p);
     var m=Math.max(0,Math.min(94,+sbState.targetMargin||0));
     var reqPrice = m>=100 ? 0 : landed/(1-m/100);
     var profit=reqPrice-landed;
@@ -1988,6 +2024,7 @@ function renderSandbox(){
   el("sbProdSearch").addEventListener("blur",function(){
     var inp=this; setTimeout(function(){ var m=el("sbProdMenu"); if(m) m.style.display="none"; if(inp) inp.value=prodName(sbProduct()); },150);
   });
+  el("sbBatch").addEventListener("change",function(e){ sbState.batch=e.target.value; updateBasis(); recalcAll(); });
   el("sbPriceN").addEventListener("input",function(e){ sbState.price=+e.target.value||0; el("sbPriceR").value=sbState.price; recalc(); });
   el("sbPriceR").addEventListener("input",function(e){ sbState.price=+e.target.value||0; el("sbPriceN").value=sbState.price; recalc(); });
   el("sbQtyN").addEventListener("input",function(e){ sbState.qty=+e.target.value||0; el("sbQtyR").value=sbState.qty; recalc(); });
