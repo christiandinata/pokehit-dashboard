@@ -2250,26 +2250,33 @@ function paintStockBody(){
   if(!products.length){ el("stkTable").innerHTML='<div class="empty">No products.</div>'; el("stkCount").textContent=""; return; }
   var q=(stockState.q||"").toLowerCase().trim();
   var rows=arr(products).filter(function(p){ return !q || prodName(p).toLowerCase().indexOf(q)>=0; });
+  // on-hand value = (warehouse + store + transit) × landed cost. Excludes ⏳ on-order
+  // (not received yet). Uses modalLanded — the product's real avg landed modal.
+  function onHand(p){ return (+p.inWarehouse||0)+(+p.inStore||0)+(+p.inTransit||0); }
+  function stkValue(p){ return onHand(p)*(+p.modalLanded||0); }
   var k=stockState.sortKey, dir=stockState.sortDir;
   rows.sort(function(a,b){
     var va,vb;
     if(k==="name"){ va=prodName(a).toLowerCase(); vb=prodName(b).toLowerCase(); }
+    else if(k==="value"){ va=stkValue(a); vb=stkValue(b); }
     else { va=+a[k]||0; vb=+b[k]||0; }
     if(va<vb) return -1*dir; if(va>vb) return 1*dir;
     return prodName(a).toLowerCase().localeCompare(prodName(b).toLowerCase());
   });
-  var t={inWarehouse:0,inStore:0,inTransit:0,onOrder:0,totalStock:0};
-  rows.forEach(function(p){ t.inWarehouse+=+p.inWarehouse||0; t.inStore+=+p.inStore||0; t.inTransit+=+p.inTransit||0; t.onOrder+=+p.onOrder||0; t.totalStock+=+p.totalStock||0; });
-  el("stkCount").innerHTML=num(rows.length)+' products · 🏠 '+num(t.inWarehouse)+' · 🏬 '+num(t.inStore)+' · 🚚 '+num(t.inTransit)+' · ⏳ '+num(t.onOrder)+' · 📦 total <b>'+num(t.totalStock)+'</b>';
+  var t={inWarehouse:0,inStore:0,inTransit:0,onOrder:0,totalStock:0,value:0};
+  rows.forEach(function(p){ t.inWarehouse+=+p.inWarehouse||0; t.inStore+=+p.inStore||0; t.inTransit+=+p.inTransit||0; t.onOrder+=+p.onOrder||0; t.totalStock+=+p.totalStock||0; t.value+=stkValue(p); });
+  el("stkCount").innerHTML=num(rows.length)+' products · 🏠 '+num(t.inWarehouse)+' · 🏬 '+num(t.inStore)+' · 🚚 '+num(t.inTransit)+' · ⏳ '+num(t.onOrder)+' · 📦 total <b>'+num(t.totalStock)+'</b> · 💰 on-hand value <b>'+money(t.value)+'</b>';
   function th(key,label){ var a=stockState.sortKey===key?(stockState.sortDir===-1?" ↓":" ↑"):""; return '<th class="stk-sort" data-k="'+key+'" style="cursor:pointer;white-space:nowrap;">'+label+a+'</th>'; }
   function cell(n){ n=+n||0; return '<td class="num"'+(n===0?' style="color:var(--muted);opacity:.4;"':'')+'>'+num(n)+'</td>'; }
   var body=rows.map(function(p){
+    var val=stkValue(p);
     return '<tr><td style="text-align:left;">🎴 '+esc(prodName(p))+'</td>'
       +cell(p.inWarehouse)+cell(p.inStore)+cell(p.inTransit)+cell(p.onOrder)
-      +'<td class="num"><b>'+num(+p.totalStock||0)+'</b></td></tr>';
+      +'<td class="num"><b>'+num(+p.totalStock||0)+'</b></td>'
+      +'<td class="num"'+(val===0?' style="color:var(--muted);opacity:.4;"':'')+'>'+money(val)+'</td></tr>';
   }).join("");
   el("stkTable").innerHTML='<div class="tscroll"><table><thead><tr>'
-    +th("name","Product")+th("inWarehouse","🏠 Wh")+th("inStore","🏬 Store")+th("inTransit","🚚 Transit")+th("onOrder","⏳ Order")+th("totalStock","📦 Total")
+    +th("name","Product")+th("inWarehouse","🏠 Wh")+th("inStore","🏬 Store")+th("inTransit","🚚 Transit")+th("onOrder","⏳ Order")+th("totalStock","📦 Total")+th("value","💰 Value")
     +'</tr></thead><tbody>'+body+'</tbody></table></div>';
   Array.prototype.forEach.call(el("stkTable").querySelectorAll(".stk-sort"),function(h){
     h.addEventListener("click",function(){
