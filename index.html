@@ -4946,11 +4946,24 @@ MG.imp = {
       st.summary=d.summary||{};
       st.items=arr(d.items).map(function(it){
         var includable = it.action==="insert" || it.action==="link_existing";
+        var pid=it.mapped_product_id||null, saveAlias=false;
+        // No saved alias? Pre-select the best fuzzy guess so the row isn't a blank
+        // dropdown, and flag it to remember the mapping on commit — so the same
+        // listing name never blocks again. Only auto-include confident guesses;
+        // weaker ones are pre-filled but left unchecked for you to confirm.
+        if(!pid){
+          var sugg=arr(it.suggestions);
+          if(sugg.length){
+            pid=sugg[0].product_id;
+            saveAlias=true;
+            if((+sugg[0].score||0)>=0.6) includable=true;
+          }
+        }
         return {
           raw:it, include:includable,
-          product_id:it.mapped_product_id||null,
+          product_id:pid,
           payout:(+it.payout_idr||0),
-          saveAlias:false
+          saveAlias:saveAlias
         };
       });
       if(btn){ btn.disabled=false; btn.textContent="🔎 Preview import"; }
