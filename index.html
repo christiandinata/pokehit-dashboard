@@ -3419,7 +3419,7 @@ MG.invoices = {
           d=d||{};
           var inv=d.invoice||d, lines=arr(d.lines), pays=arr(d.payment_transactions);
           var paySum=d.payments||{};   // invoice_payments view: totals + status
-          var ful={}; arr(d.fulfillment).forEach(function(f){ ful[f.invoice_line_id]=f; });
+          var ful={}; arr(d.line_fulfillment).forEach(function(f){ ful[f.invoice_line_id]=f; });
           var sup=inv.supplier_name||MG.partyName(inv.supplier_id);
           var ccy=inv.currency||"IDR";
           var totalNative=0, totalIdr=0;
@@ -3859,7 +3859,7 @@ MG.ship = {
               box.innerHTML=MG.skel(2);
               MG.api("invoices.get",{id:+invId}).then(function(dd){
                 dd=dd||{};
-                var ils=arr(dd.lines), ful={}; arr(dd.fulfillment).forEach(function(f){ ful[f.invoice_line_id]=f; });
+                var ils=arr(dd.lines), ful={}; arr(dd.line_fulfillment).forEach(function(f){ ful[f.invoice_line_id]=f; });
                 var open=ils.map(function(l){
                   var f=ful[l.id]||{};
                   var rem=(f.quantity_remaining!=null)?f.quantity_remaining:((l.quantity_remaining!=null)?l.quantity_remaining:l.quantity_ordered);
@@ -3984,7 +3984,7 @@ MG.ship = {
           MG.api("invoices.get",{id:+invId}).then(function(d){
             d=d||{};
             var lines=arr(d.lines);
-            var ful={}; arr(d.fulfillment).forEach(function(f){ ful[f.invoice_line_id]=f; });
+            var ful={}; arr(d.line_fulfillment).forEach(function(f){ ful[f.invoice_line_id]=f; });
             var open=lines.map(function(l){
               var f=ful[l.id]||{};
               var rem=(f.quantity_remaining!=null)?f.quantity_remaining
