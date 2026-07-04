@@ -4804,7 +4804,15 @@ MG.channels = {
 /* ===================== IMPORT WIZARD (Shopee xlsx) ===================== */
 MG.imp = {
   st:{ built:false, orders:null, ordersName:"", income:null, incomeName:"", items:null, summary:null,
-       q:"", actionFilter:"", sortKey:"", sortDir:1, fromLocation:"warehouse" },
+       q:"", actionFilter:"", sortKey:"", sortDir:1, fromLocation:"warehouse", servicePct:null },
+
+  // Shopee Biaya Layanan % — user-set (Shopee changes it per promo period), persisted.
+  svcPct:function(){
+    if(this.st.servicePct!=null) return this.st.servicePct;
+    var v=parseFloat(localStorage.getItem("pokehit_shopee_svc_pct"));
+    this.st.servicePct=(isFinite(v)&&v>=0)?v:12.5;
+    return this.st.servicePct;
+  },
 
   /* SheetJS is lazy-loaded only when the Import tab is used. */
   _libP:null,
@@ -4946,7 +4954,7 @@ MG.imp = {
     if(!st.orders) return;
     var btn=el("mgImpPrev"); if(btn){ btn.disabled=true; btn.textContent="Analyzing…"; }
     el("mgImpStage").innerHTML='<div class="card">'+MG.skel(6)+'</div>';
-    var body={ channel:"shopee", orders:st.orders, from_location:st.fromLocation||"warehouse" };
+    var body={ channel:"shopee", orders:st.orders, from_location:st.fromLocation||"warehouse", service_pct:self.svcPct() };
     if(st.income && st.income.length) body.income=st.income;
     Promise.all([MG.loadCatalog(), MG.api("import.preview",body)]).then(function(res){
       var d=res[1]||{};
@@ -5099,6 +5107,8 @@ MG.imp = {
           +'<button class="mg-btn primary" id="mgImpGo" type="button"></button>'
           +'<span class="mg-count" id="mgImpSelInfo" style="margin:0;"></span>'
           +'<span class="spacer" style="flex:1;"></span>'
+          +'<span class="bn" style="color:var(--muted);font-weight:600;">Shopee svc %:</span>'
+          +'<input class="inp" id="mgImpSvc" type="number" min="0" step="0.5" value="'+esc(self.svcPct())+'" title="Biaya Layanan % on free-shipping orders. Change when Shopee changes it — remembered next time." style="width:64px;min-height:32px;font-size:13px;">'
           +'<span class="bn" style="color:var(--muted);font-weight:600;">Deduct from:</span>'
           +'<button class="mg-btn sm'+(st.fromLocation!=="store"?" primary":"")+'" id="mgImpLocWh" type="button">🏠 Warehouse</button>'
           +'<button class="mg-btn sm'+(st.fromLocation==="store"?" primary":"")+'" id="mgImpLocSt" type="button">🏬 Store</button>'
@@ -5179,6 +5189,12 @@ MG.imp = {
     function setLoc(loc){ if(st.fromLocation===loc) return; st.fromLocation=loc; self.preview(); }
     var lw=el("mgImpLocWh"); if(lw) lw.addEventListener("click",function(){ setLoc("warehouse"); });
     var lst=el("mgImpLocSt"); if(lst) lst.addEventListener("click",function(){ setLoc("store"); });
+    var sv=el("mgImpSvc"); if(sv) sv.addEventListener("change",function(){
+      var v=parseFloat(sv.value);
+      if(!isFinite(v)||v<0){ sv.value=self.svcPct(); return; }
+      st.servicePct=v; try{ localStorage.setItem("pokehit_shopee_svc_pct",String(v)); }catch(e){}
+      self.preview();
+    });
     el("mgImpSelAll").addEventListener("click",function(){ setAll(!allOn); });
     var hdr=el("mgImpSelHdr"); if(hdr) hdr.addEventListener("change",function(){ setAll(hdr.checked); });
     var cf=el("mgImpClearF"); if(cf) cf.addEventListener("click",function(){ st.actionFilter=""; self.paintPreview(); });
