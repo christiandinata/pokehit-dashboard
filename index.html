@@ -3544,13 +3544,14 @@ MG.invoices = {
       // implied FX rate from an existing line, so edited/new costs convert to IDR consistently.
       var rate=1, i;
       for(i=0;i<lines.length;i++){ if(+lines[i].cost_per_unit>0 && +lines[i].cost_per_unit_idr>0){ rate=(+lines[i].cost_per_unit_idr)/(+lines[i].cost_per_unit); break; } }
-      var work=lines.map(function(l){ return {id:l.id, product_id:l.product_id, qty:+l.quantity_ordered||0, cost:+l.cost_per_unit||0, del:false, isNew:false}; });
+      // total = qty × cost is held constant; changing qty re-spreads it into a new unit cost.
+      var work=lines.map(function(l){ var q=+l.quantity_ordered||0, c=+l.cost_per_unit||0; return {id:l.id, product_id:l.product_id, qty:q, cost:c, total:q*c, del:false, isNew:false}; });
       MG.loadCatalog().then(function(){
         MG.modal({ title:"✏️ Edit invoice #"+id, wide:true,
           sub:"👤 "+esc(inv.supplier_name||MG.partyName(inv.supplier_id))+" · "+esc(ccy)+(ccy!=="IDR"?(" · IDR = native × "+(Math.round(rate*100)/100)):""),
           body:'<div class="mg-form">'
             +'<div class="mg-grid2">'+MG.f.date("mgIeDate","Invoice date",MG.dstr(inv.invoice_date))+MG.f.text("mgIeNotes","Notes",inv.notes||"")+'</div>'
-            +'<div class="ctl-lbl" style="margin:10px 0 6px;">Lines — edit qty / cost, or 🗑 remove</div>'
+            +'<div class="ctl-lbl" style="margin:10px 0 6px;">Lines — change qty to spread the total (unit cost recalculates), or edit cost / 🗑 remove</div>'
             +'<div class="tscroll"><table class="mg compact"><thead><tr><th>Product</th><th>Qty</th><th>Cost/u ('+esc(ccy)+')</th><th></th></tr></thead><tbody id="mgIeBody"></tbody></table></div>'
             +'<div class="ctl-lbl" style="margin:14px 0 6px;">Add a line</div>'
             +'<div class="fld">'+MG.pickerHtml("mgIeProd")+'</div>'
@@ -3571,8 +3572,12 @@ MG.invoices = {
                   +'<td><button class="mg-iconbtn" data-del="'+idx+'" title="Remove">🗑️</button></td></tr>';
               }).join("");
               b.innerHTML=html||'<tr><td colspan="4" class="empty">No lines — add one below.</td></tr>';
-              Array.prototype.forEach.call(b.querySelectorAll("[data-q]"),function(inp){ inp.addEventListener("input",function(){ work[+inp.getAttribute("data-q")].qty=MG.parseMoney(inp.value); }); });
-              Array.prototype.forEach.call(b.querySelectorAll("[data-c]"),function(inp){ inp.addEventListener("input",function(){ work[+inp.getAttribute("data-c")].cost=+inp.value||0; }); });
+              Array.prototype.forEach.call(b.querySelectorAll("[data-q]"),function(inp){ inp.addEventListener("input",function(){
+                var i=inp.getAttribute("data-q"), w=work[+i]; w.qty=MG.parseMoney(inp.value);
+                w.cost = w.qty>0 ? Math.round((w.total/w.qty)*100)/100 : 0;   // spread the held total over new qty
+                var cin=b.querySelector('[data-c="'+i+'"]'); if(cin) cin.value=w.cost;
+              }); });
+              Array.prototype.forEach.call(b.querySelectorAll("[data-c]"),function(inp){ inp.addEventListener("input",function(){ var w=work[+inp.getAttribute("data-c")]; w.cost=+inp.value||0; w.total=w.cost*w.qty; }); });
               Array.prototype.forEach.call(b.querySelectorAll("[data-del]"),function(btn){ btn.addEventListener("click",function(){ work[+btn.getAttribute("data-del")].del=true; paintLines(); }); });
             }
             paintLines();
@@ -3582,7 +3587,7 @@ MG.invoices = {
               var pid=MG.pickerVal(body,"mgIeProd"), q=MG.parseMoney(MG.v(body,"mgIeQty")), c=+MG.v(body,"mgIeCost")||0;
               if(!pid){ err.textContent="Pick a product to add."; return; }
               if(!q){ err.textContent="Quantity required for the new line."; return; }
-              work.push({id:null,product_id:+pid,qty:q,cost:c,del:false,isNew:true});
+              work.push({id:null,product_id:+pid,qty:q,cost:c,total:q*c,del:false,isNew:true});
               body.querySelector("#mgIeQty").value=""; body.querySelector("#mgIeCost").value="";
               paintLines();
             });
