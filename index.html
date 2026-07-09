@@ -862,8 +862,14 @@ function ovPnl(period){
     }
     if(asOf!==null && r.date===asOf){ dayNet=+r.netProfit||0; dayHas=true; }
   }
-  var gross=rev-cogs, net=gross-op;
-  return { revenue:rev, cogs:cogs, grossProfit:gross, opex:op, netProfit:net,
+  var gross=rev-cogs;
+  // All-time P&L is reconciled to actual Value Created: the delta = shipping/FX paid on
+  // already-sold goods beyond their booked COGS (COGS is locked at sale time, so late
+  // costs can't go back in). Booked as a COGS adjustment so Net Profit == Value Created.
+  // Only for the cumulative all-time view — balance figures are "now", not windowed.
+  var adj = (asOf===null) ? ((gross-op) - (+((bal&&bal.valueCreated))||0)) : 0;
+  var net = gross - op - adj;
+  return { revenue:rev, cogs:cogs, grossProfit:gross, opex:op, cogsAdj:adj, netProfit:net,
     grossMarginPct: rev?gross/rev*100:0, netMarginPct: rev?net/rev*100:0,
     orders:orders, units:units, asOf:asOf, dayNet:dayNet, dayHas:dayHas };
 }
@@ -901,6 +907,7 @@ function renderOverview(){
    +kpiCard("Value Created", money(bal.valueCreated), "equity − capital · now", "value", "accent-green");
 
   var rev=p.revenue||0, cogs=p.cogs||0, gross=p.grossProfit||0, op=p.opex||0, net=p.netProfit||0;
+  var adj=p.cogsAdj||0, afterOpex=gross-op;
   var scale = Math.max(rev,1);
   function W(){return (Math.min(Math.abs(arguments[0]),scale)/scale)*100;}
   function bar(left,width,color){
@@ -911,8 +918,12 @@ function renderOverview(){
    +wfRow("Revenue",rev,bar(0,W(rev),grad),"")
    +wfRow("− COGS",-cogs,bar(W(gross),W(cogs),"var(--red)"),"neg")
    +wfRow("Gross profit",gross,bar(0,W(gross),"var(--green)"),"pos")
-   +wfRow("− Opex",-op,bar(W(net),W(op),"var(--amber)"),"warnc")
+   +wfRow("− Opex",-op,bar(W(afterOpex),W(op),"var(--amber)"),"warnc")
+   +(Math.abs(adj)>1 ? wfRow("− COGS adj",-adj,bar(W(net),W(adj),"var(--red)"),"neg") : "")
    +wfRow("Net profit",net,bar(0,W(net),(net>=0?"var(--green)":"var(--red)")),(net>=0?"pos":"neg"));
+  var adjNote = Math.abs(adj)>1
+    ? '<div class="sb-hint" style="margin:8px 2px 0;">COGS adj = shipping/FX paid on already-sold goods beyond booked cost; reconciles Net Profit to actual Value Created.</div>'
+    : '';
 
   el("sec-overview").innerHTML =
     '<div class="sec-head" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">'
@@ -921,7 +932,7 @@ function renderOverview(){
    +sub
    +'<div class="kpis">'+kpis+'</div>'
    +'<div class="sec-title">P&amp;L waterfall</div>'
-   +'<div class="card">'+wf+'</div>'
+   +'<div class="card">'+wf+adjNote+'</div>'
    +'<div class="sec-title">Margins</div>'
    +'<div class="card"><div class="donuts">'
      +'<div class="donut">'+donut(gm,"#34d399")+'<div class="dlabel">Gross margin</div></div>'
