@@ -2964,7 +2964,7 @@ MG.sales = {
         +'<td style="text-align:left;">'+MG.chChip(s.channel)+'</td>'
         +'<td style="text-align:left;">'+esc(s.customer_name||"—")+'</td>'
         +'<td title="'+esc(loc.label)+'">'+loc.icon+'</td>'
-        +'<td class="num '+marginClass(m)+'">'+money(profit)+'</td>'
+        +'<td class="num '+marginClass(m)+'">'+money(profit)+(m!=null?'<span style="display:block;font-size:11px;opacity:.7;">'+pct(m)+'</span>':'')+'</td>'
         +'<td><span class="mg-rowact">'
           +'<button class="mg-iconbtn" data-edit="'+s.id+'" title="Edit">✏️</button>'
           +'<button class="mg-iconbtn" data-del="'+s.id+'" title="Delete">🗑️</button>'
