@@ -3494,7 +3494,8 @@ MG.invoices = {
             return '<tr><td>'+esc(MG.dstr(p.paid_date||p.date))+'</td>'
               +'<td class="num">'+(ccy==="IDR"?money(p.amount_native):num(p.amount_native)+" "+esc(ccy))+'</td>'
               +'<td class="num">'+money(p.amount_idr)+'</td>'
-              +'<td style="text-align:left;">'+esc(p.notes||p.description||"—")+'</td></tr>';
+              +'<td style="text-align:left;">'+esc(p.notes||p.description||"—")+'</td>'
+              +'<td>'+(p.id!=null?'<button class="mg-iconbtn" data-delpay="'+p.id+'" title="Remove payment">🗑️</button>':'')+'</td></tr>';
           }).join("");
           var paidIdr=(paySum.paid_idr!=null)?(+paySum.paid_idr||0):pays.reduce(function(s,p){return s+(+p.amount_idr||0);},0);
           var outstanding=(paySum.outstanding_native!=null)?paySum.outstanding_native:null;
@@ -3513,7 +3514,7 @@ MG.invoices = {
             +'<div class="tscroll"><table class="mg compact"><thead><tr><th>Product</th><th>Ordered</th><th>Shipped</th><th>Cost/u '+esc(ccy)+'</th><th>Cost/u IDR</th></tr></thead><tbody>'
               +(lineRows||'<tr><td colspan="5" class="empty">No lines.</td></tr>')+'</tbody></table></div>'
             +'<div class="ctl-lbl" style="margin:14px 0 6px;">Payments</div>'
-            +(payRows?'<div class="tscroll"><table class="mg compact"><thead><tr><th>Date</th><th>Native</th><th>IDR</th><th>Notes</th></tr></thead><tbody>'+payRows+'</tbody></table></div>'
+            +(payRows?'<div class="tscroll"><table class="mg compact"><thead><tr><th>Date</th><th>Native</th><th>IDR</th><th>Notes</th><th></th></tr></thead><tbody>'+payRows+'</tbody></table></div>'
               :'<div class="empty">No payments recorded.</div>')
             +'<div class="mg-foot">'
               +'<button class="mg-btn danger" id="mgIvDel" type="button">🗑 Delete</button>'
@@ -3525,6 +3526,16 @@ MG.invoices = {
 
           body.querySelector("#mgIvEdit").addEventListener("click",function(){ close(); self.editModal(id); });
           body.querySelector("#mgIvPay").addEventListener("click",function(){ close(); self.payModal(inv, outstanding); });
+          Array.prototype.forEach.call(body.querySelectorAll("[data-delpay]"),function(btn){
+            btn.addEventListener("click",function(){
+              var pid=+btn.getAttribute("data-delpay");
+              MG.confirmBox("Remove this payment?","The invoice's paid total and any payment fee folded into landed cost will recompute.","Remove payment")
+                .then(function(yes){
+                  if(!yes) return;
+                  MG.api("expenses.delete",{id:pid}).then(function(){ MG.toast("Payment removed","ok"); close(); self.fetch(); MG.loadCatalog(true); self.detail(id); }).catch(MG.fail);
+                });
+            });
+          });
           body.querySelector("#mgIvClose").addEventListener("click",function(){
             close();
             MG.confirmBox("Close invoice #"+id+"?","Unshipped remainders are written off as shortage — stock on order disappears.","Close invoice")
