@@ -3520,11 +3520,20 @@ MG.invoices = {
               +'<button class="mg-btn danger" id="mgIvDel" type="button">🗑 Delete</button>'
               +'<span class="grow"></span>'
               +'<button class="mg-btn" id="mgIvEdit" type="button">✏️ Edit</button>'
+              +(pays.length?'<button class="mg-btn" id="mgIvRecost" type="button" title="Set line IDR cost from the total actually paid">🧮 Cost = paid</button>':'')
               +'<button class="mg-btn" id="mgIvClose" type="button">🔒 Close</button>'
               +'<button class="mg-btn primary" id="mgIvPay" type="button">💵 Record payment</button>'
             +'</div>';
 
           body.querySelector("#mgIvEdit").addEventListener("click",function(){ close(); self.editModal(id); });
+          var rc=body.querySelector("#mgIvRecost");
+          if(rc) rc.addEventListener("click",function(){
+            MG.confirmBox("Set cost from paid amount?","Each line's IDR cost becomes (total paid ÷ units), prorated by line value. Use only when payment on this invoice is final — a DP-only invoice would understate cost.","Recost")
+              .then(function(yes){
+                if(!yes) return;
+                MG.api("invoices.recost",{id:id}).then(function(){ MG.toast("Cost recalculated from paid","ok"); close(); self.fetch(); MG.loadCatalog(true); self.detail(id); }).catch(MG.fail);
+              });
+          });
           body.querySelector("#mgIvPay").addEventListener("click",function(){ close(); self.payModal(inv, outstanding); });
           Array.prototype.forEach.call(body.querySelectorAll("[data-delpay]"),function(btn){
             btn.addEventListener("click",function(){
