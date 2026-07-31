@@ -728,6 +728,12 @@ function num(n){
   if(n===null||n===undefined||isNaN(n)) return "0";
   return Math.round(n).toLocaleString("id-ID");
 }
+// Native/foreign-currency amounts keep their decimals (33,5 SGD must not read 34).
+// Trailing zeros are trimmed: 212 → "212", 33.5 → "33,5", 10.7 → "10,7".
+function dec(n,max){
+  if(n===null||n===undefined||isNaN(n)) return "—";
+  return (+n).toLocaleString("id-ID",{minimumFractionDigits:0,maximumFractionDigits:(max==null?4:max)});
+}
 function arr(a){ return Array.isArray(a)?a:[]; }
 function esc(s){
   return String(s==null?"":s).replace(/[&<>"']/g,function(c){
@@ -3622,12 +3628,12 @@ MG.invoices = {
             return '<tr><td>🎴 '+esc(MG.prodLabelById(l.product_id))+'</td>'
               +'<td class="num">'+num(qo)+'</td>'
               +'<td class="num">'+(shipped==null?"—":num(shipped))+'</td>'
-              +'<td class="num">'+(ccy==="IDR"?money(l.cost_per_unit):num(l.cost_per_unit))+'</td>'
+              +'<td class="num">'+(ccy==="IDR"?money(l.cost_per_unit):dec(l.cost_per_unit))+'</td>'
               +'<td class="num">'+money(l.cost_per_unit_idr)+'</td></tr>';
           }).join("");
           var payRows=pays.map(function(p){
             return '<tr><td>'+esc(MG.dstr(p.paid_date||p.date))+'</td>'
-              +'<td class="num">'+(ccy==="IDR"?money(p.amount_native):num(p.amount_native)+" "+esc(ccy))+'</td>'
+              +'<td class="num">'+(ccy==="IDR"?money(p.amount_native):dec(p.amount_native)+" "+esc(ccy))+'</td>'
               +'<td class="num">'+money(p.amount_idr)+'</td>'
               +'<td style="text-align:left;">'+esc(p.notes||p.description||"—")+'</td>'
               +'<td>'+(p.id!=null?'<button class="mg-iconbtn" data-delpay="'+p.id+'" title="Remove payment">🗑️</button>':'')+'</td></tr>';
@@ -3640,10 +3646,10 @@ MG.invoices = {
               +(inv.closed_with_shortage?' · <span class="warnc">🔒 closed with shortage</span>':'')
               +(inv.notes?'<br>📝 '+esc(inv.notes):'')+'</div>'
             +'<div class="ttotals">'
-              +'<div class="ttotal"><div class="t">Total ('+esc(ccy)+')</div><div class="v num">'+num(totalNative)+'</div></div>'
+              +'<div class="ttotal"><div class="t">Total ('+esc(ccy)+')</div><div class="v num">'+dec(totalNative)+'</div></div>'
               +'<div class="ttotal"><div class="t">Total (IDR)</div><div class="v num">'+money(totalIdr)+'</div></div>'
               +'<div class="ttotal"><div class="t">Paid (IDR)</div><div class="v num pos">'+money(paidIdr)+'</div></div>'
-              +(outstanding!=null?'<div class="ttotal"><div class="t">💸 Outstanding ('+esc(ccy)+')</div><div class="v num '+(outstanding>0?"neg":"pos")+'">'+num(outstanding)+'</div></div>':'')
+              +(outstanding!=null?'<div class="ttotal"><div class="t">💸 Outstanding ('+esc(ccy)+')</div><div class="v num '+(outstanding>0?"neg":"pos")+'">'+dec(outstanding)+'</div></div>':'')
             +'</div>'
             +'<div class="ctl-lbl" style="margin:8px 0 6px;">Lines</div>'
             +'<div class="tscroll"><table class="mg compact"><thead><tr><th>Product</th><th>Ordered</th><th>Shipped</th><th>Cost/u '+esc(ccy)+'</th><th>Cost/u IDR</th></tr></thead><tbody>'
@@ -3786,7 +3792,7 @@ MG.invoices = {
     var self=this, ccy=inv.currency||"IDR";
     MG.modal({
       title:"💵 Record payment — invoice #"+inv.id,
-      sub:(outstanding!=null?("Outstanding: "+num(outstanding)+" "+esc(ccy)):""),
+      sub:(outstanding!=null?("Outstanding: "+dec(outstanding)+" "+esc(ccy)):""),
       body:'<div class="mg-form">'
         +'<div class="mg-grid2">'
           +MG.f.num("mgPayNat","Amount ("+ccy+")",outstanding!=null?outstanding:"",1)
