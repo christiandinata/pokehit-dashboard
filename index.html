@@ -82,6 +82,24 @@
   }
   .signout:hover{border-color:var(--red);color:var(--red);}
   .mseg.signout-m{color:var(--red);}
+  .privbtn{margin-top:8px;margin-right:6px;}
+  .privbtn:hover{border-color:var(--acc);color:var(--acc);}
+  .privbtn.on{border-color:var(--acc);color:var(--acc);}
+  /* Privacy mode: blur every figure so the app can be shown/screen-shared safely.
+     .num covers KPI values, waterfall amounts and all numeric table cells; the
+     rest are text blocks that quote money. Layout is untouched. */
+  body.priv .num,
+  body.priv .chrev,
+  body.priv .mg-plan,
+  body.priv .sb-cmp,
+  body.priv .mg-count,
+  body.priv .fdesc{
+    filter:blur(7px);-webkit-filter:blur(7px);
+    user-select:none;-webkit-user-select:none;
+    transition:filter .12s ease;
+  }
+  body.priv .num:hover,
+  body.priv .mg-count:hover{filter:blur(0);-webkit-filter:blur(0);}
 
   /* ===== App shell (desktop sidebar + main) ===== */
   .shell{display:block;}
@@ -767,12 +785,19 @@ function buildTabs(){
   el("navMobile").innerHTML = TABS.map(function(t,i){
     return '<button class="mseg'+(i===0?' active':'')+'" data-tab="'+t[0]+'">'+esc(t[1])+'</button>';
   }).join("")
+    +'<button class="mseg" id="privBtnM" type="button">'+(privOn()?'🙈 Hidden':'👁 Hide')+'</button>'
     +'<button class="mseg signout-m" id="signoutBtnM" type="button">⏻ Sign out</button>';
   Array.prototype.forEach.call(document.querySelectorAll(".navitem,.mseg"),function(b){
-    if(b.id==="signoutBtnM") return;
+    if(b.id==="signoutBtnM"||b.id==="privBtnM") return;
     b.addEventListener("click",function(){ setTab(b.getAttribute("data-tab")); });
   });
   var sbm=el("signoutBtnM"); if(sbm) sbm.addEventListener("click",signOut);
+  var pvm=el("privBtnM");
+  if(pvm) pvm.addEventListener("click",function(){
+    privSet(!privOn());
+    pvm.textContent=privOn()?'🙈 Hidden':'👁 Hide';
+    renderFoot();
+  });
   // Collapsible sidebar — persists across visits.
   var sbt=el("sbToggle");
   if(sbt){
@@ -2339,6 +2364,19 @@ function prettyTs(ts){
   else rel=Math.round(diff/86400)+" day"+(diff<172800?"":"s")+" ago";
   return {abs:abs, rel:rel};
 }
+/* Privacy mode — blur figures for screen-sharing. Persisted per device. */
+function privOn(){
+  try{ return localStorage.getItem("pokehit_privacy")==="1"; }catch(e){ return false; }
+}
+function privSet(on){
+  try{ localStorage.setItem("pokehit_privacy", on?"1":"0"); }catch(e){}
+  privApply();
+}
+function privApply(){
+  if(!document.body) return;
+  if(privOn()) document.body.classList.add("priv");
+  else document.body.classList.remove("priv");
+}
 function renderFoot(){
   var t=prettyTs(D.generatedAt||"");
   var f=el("sbFoot");
@@ -2346,13 +2384,17 @@ function renderFoot(){
     f.innerHTML='<div class="live"><span class="dot"></span> Data is live</div>'
       +'<div style="margin-top:4px;line-height:1.5;">Updated '+esc(t.abs)
       +(t.rel?' <span style="color:var(--muted);">· '+esc(t.rel)+'</span>':'')+'</div>'
+      +'<button class="signout privbtn'+(privOn()?' on':'')+'" id="privBtn" type="button" title="Blur all figures — hover a value to peek">'
+        +(privOn()?'🙈 Numbers hidden':'👁 Hide numbers')+'</button>'
       +'<button class="signout" id="signoutBtn" type="button">⏻ Sign out</button>';
     var sb=el("signoutBtn"); if(sb) sb.addEventListener("click",signOut);
+    var pv=el("privBtn"); if(pv) pv.addEventListener("click",function(){ privSet(!privOn()); renderFoot(); });
   }
 }
 
 /* ===================== BOOT ===================== */
 function boot(){
+  privApply();   // restore the blur before anything paints
   pnl = D.pnl||{}; bal = D.balance||{};
   products = arr(D.products).sort(function(a,b){
     return prodName(a).toLowerCase().localeCompare(prodName(b).toLowerCase());
