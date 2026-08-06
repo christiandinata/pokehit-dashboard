@@ -3569,13 +3569,28 @@ MG.products = {
 
 /* ===================== MANAGE · INVOICES ===================== */
 MG.invoices = {
-  st:{ rows:[], q:"", built:false },
+  st:{ rows:[], q:"", built:false, shipFilter:"" },
 
   shipIcon:function(s){
     if(s==="fully_shipped") return "🏠";
     if(s==="partial") return "🚚";
     if(s==="closed_with_shortage") return "🔒";
     return "⏳";
+  },
+  shipChip:function(s){
+    if(s==="fully_shipped") return '<span class="mg-chip" style="color:var(--green);border-color:rgba(52,211,153,.4);">🏠 shipped</span>';
+    if(s==="partial") return '<span class="mg-chip" style="color:var(--amber);border-color:rgba(251,191,36,.4);">🚚 partial</span>';
+    if(s==="closed_with_shortage") return '<span class="mg-chip" style="color:var(--muted);">🔒 closed short</span>';
+    return '<span class="mg-chip" style="color:var(--red);border-color:rgba(251,113,133,.4);">⏳ not shipped</span>';
+  },
+  // normalized bucket used by the ship filter
+  shipKey:function(r){
+    var f=r.fulfillment||{};
+    var s=f.shipping_status || (r.closed_with_shortage?"closed_with_shortage":null);
+    if(s==="fully_shipped") return "fully_shipped";
+    if(s==="partial") return "partial";
+    if(s==="closed_with_shortage") return "closed_with_shortage";
+    return "unshipped";
   },
   payChip:function(s){
     if(s==="fully_paid") return '<span class="mg-chip" style="color:var(--green);border-color:rgba(52,211,153,.4);">✅ paid</span>';
@@ -3622,8 +3637,32 @@ MG.invoices = {
       var sup=r.supplier_name||MG.partyName(r.supplier_id);
       return (("#"+r.id)+" "+sup+" "+(r.invoice_date||"")+" "+(r.currency||"")).toLowerCase().indexOf(q)>=0;
     });
-    el("mgInvCount").textContent=num(rows.length)+" invoices";
-    if(!rows.length){ el("mgInvTable").innerHTML='<div class="empty">No invoices yet — record a supplier order with ＋ New invoice.</div>'; return; }
+    // shipping-status buckets: counts drive the filter chips, click one to narrow
+    var buckets={unshipped:0,partial:0,fully_shipped:0,closed_with_shortage:0};
+    rows.forEach(function(r){ buckets[self.shipKey(r)]++; });
+    var sf=this.st.shipFilter||"";
+    if(sf) rows=rows.filter(function(r){ return self.shipKey(r)===sf; });
+    function sChip(key,label,color){
+      var on=(sf===key);
+      return '<button class="mg-btn sm'+(on?" primary":"")+'" data-sf="'+key+'" type="button" style="margin:0 6px 8px 0;'+(on?"":"color:"+color+";")+'">'
+        +label+' <b>'+num(buckets[key])+'</b></button>';
+    }
+    var chips='<div style="margin:2px 0 4px;">'
+      +'<button class="mg-btn sm'+(sf?"":" primary")+'" data-sf="" type="button" style="margin:0 6px 8px 0;">All <b>'+num(this.st.rows.length)+'</b></button>'
+      +sChip("unshipped","⏳ not shipped","var(--red)")
+      +sChip("partial","🚚 partial","var(--amber)")
+      +sChip("fully_shipped","🏠 shipped","var(--green)")
+      +(buckets.closed_with_shortage?sChip("closed_with_shortage","🔒 closed short","var(--muted)"):"")
+      +'</div>';
+    el("mgInvCount").textContent=num(rows.length)+" invoices"+(sf?" (filtered)":"");
+    if(!rows.length){ el("mgInvTable").innerHTML=chips+'<div class="empty">No invoices match this filter.</div>';
+      Array.prototype.forEach.call(el("mgInvTable").querySelectorAll("[data-sf]"),function(c){
+        c.addEventListener("click",function(){
+          var k=c.getAttribute("data-sf");
+          self.st.shipFilter=(self.st.shipFilter===k)?"":k; self.paint();
+        });
+      });
+      return; }
     var body=rows.map(function(r){
       var sup=r.supplier_name||MG.partyName(r.supplier_id);
       var pay=r.payments||{}, ful=r.fulfillment||{};
@@ -3636,14 +3675,22 @@ MG.invoices = {
         +'<td>'+esc(MG.dstr(r.invoice_date))+'</td>'
         +'<td>'+esc(r.currency||"—")+'</td>'
         +'<td class="num">'+total+'</td>'
-        +'<td title="'+esc(ship||"on order")+'">'+self.shipIcon(ship)+'</td>'
+        +'<td style="text-align:left;">'+self.shipChip(ship)+'</td>'
         +'<td style="text-align:left;">'+self.payChip(pay.payment_status)+'</td>'
         +'</tr>';
     }).join("");
-    el("mgInvTable").innerHTML='<div class="tscroll"><table class="mg"><thead><tr>'
-      +'<th>Invoice</th><th>Supplier</th><th>Date</th><th>Ccy</th><th>Total</th><th>Ship</th><th>Payment</th>'
+    el("mgInvTable").innerHTML=chips
+      +'<div class="tscroll"><table class="mg"><thead><tr>'
+      +'<th>Invoice</th><th>Supplier</th><th>Date</th><th>Ccy</th><th>Total</th><th>Shipping</th><th>Payment</th>'
       +'</tr></thead><tbody>'+body+'</tbody></table></div>'
-      +'<div class="mg-count" style="margin-top:8px;">⏳ not shipped · 🚚 partial · 🏠 fully shipped · 🔒 closed short — tap a row for detail</div>';
+      +'<div class="mg-count" style="margin-top:8px;">Tap a row for detail · 🔒 closed short = unshipped remainder written off</div>';
+    Array.prototype.forEach.call(el("mgInvTable").querySelectorAll("[data-sf]"),function(c){
+      c.addEventListener("click",function(){
+        var k=c.getAttribute("data-sf");
+        self.st.shipFilter = (self.st.shipFilter===k) ? "" : k;
+        self.paint();
+      });
+    });
     Array.prototype.forEach.call(el("mgInvTable").querySelectorAll("tr.mg-click"),function(r){
       r.addEventListener("click",function(){ self.detail(+r.getAttribute("data-id")); });
     });
