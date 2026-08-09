@@ -3273,6 +3273,7 @@ MG.sales = {
           +MG.f.date("mgNsDate","Sale date")
         +'</div>'
         +MG.f.picks("mgNsLoc","Sell from",locs,"warehouse")
+        +MG.f.sel("mgNsBatch","Cost batch (optional — blank uses FIFO)",[{v:"",l:"FIFO — oldest stock first"}],"")
         +'<div id="mgNsPlan" class="mg-plan" style="display:none;"></div>'
         +'<div class="mg-grid2">'
           +MG.f.num("mgNsPrice","Unit price (IDR)","",1000)
@@ -3286,7 +3287,26 @@ MG.sales = {
         +'<button class="mg-btn primary" id="mgNsSave" type="button">Record sale</button></div>'
       +'</div>',
       onMount:function(body, close){
-        var lastEdited="price", planTimer=null;
+        var lastEdited="price", planTimer=null, batchOpts=[];
+        // Optional: pin the sale to one cost batch. Blank = FIFO (unchanged behaviour).
+        function preferLines(){
+          var v=MG.v(body,"mgNsBatch");
+          if(v==="") return null;
+          var o=batchOpts[+v];
+          return o?o.lines:null;
+        }
+        function loadBatches(){
+          var pid=MG.pickerVal(body,"mgNsProd"), sel=body.querySelector("#mgNsBatch");
+          batchOpts=[]; sel.innerHTML='<option value="">FIFO — oldest stock first</option>';
+          if(!pid) return;
+          MG.api("sales.batches",{product_id:+pid}).then(function(d){
+            batchOpts=arr((d||{}).options);
+            sel.innerHTML='<option value="">FIFO — oldest stock first</option>'
+              +batchOpts.map(function(o,i){
+                return '<option value="'+i+'">'+esc(num(o.qty))+' × '+money(o.cost)+' each</option>';
+              }).join("");
+          }).catch(function(){});
+        }
         function qty(){ return Math.max(0, MG.parseMoney(MG.v(body,"mgNsQty"))); }
         function price(){ return MG.parseMoney(MG.v(body,"mgNsPrice")); }
         function total(){ return MG.parseMoney(MG.v(body,"mgNsTotal")); }
@@ -3305,7 +3325,9 @@ MG.sales = {
           pb.innerHTML="Checking stock…";
           clearTimeout(planTimer);
           planTimer=setTimeout(function(){
-            MG.api("sales.plan",{ product_id:pid, quantity:q, from_location:loc }).then(function(d){
+            var pf=preferLines();
+            MG.api("sales.plan",{ product_id:pid, quantity:q, from_location:loc,
+                                  prefer_shipment_line_ids:pf||undefined }).then(function(d){
               d=d||{};
               if(d.can){
                 pb.className="mg-plan ok";
@@ -3320,8 +3342,9 @@ MG.sales = {
         }
         MG.wirePicker(body,"mgNsProd",function(p){
           if(p.sale_price_idr && !price()){ body.querySelector("#mgNsPrice").value=p.sale_price_idr; lastEdited="price"; sync(); }
-          plan();
+          loadBatches(); plan();
         });
+        body.querySelector("#mgNsBatch").addEventListener("change",plan);
         MG.wirePicks(body,"mgNsLoc",plan);
         MG.wirePicks(body,"mgNsCh");
         body.querySelector("#mgNsQty").addEventListener("input",function(){ sync(); plan(); });
@@ -3342,6 +3365,8 @@ MG.sales = {
           };
           var tot=total();
           if(tot) payload.total_idr=tot;
+          var pfSave=preferLines();
+          if(pfSave) payload.prefer_shipment_line_ids=pfSave;
           var cust=MG.v(body,"mgNsCust").trim(); if(cust) payload.customer_name=cust;
           var notes=MG.v(body,"mgNsNotes").trim(); if(notes) payload.notes=notes;
           var btn=body.querySelector("#mgNsSave"); btn.disabled=true; btn.textContent="Saving…";
