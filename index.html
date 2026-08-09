@@ -880,6 +880,7 @@ function applyComposites(list){
     for(k=0;k<pb.length;k++){ tq+=pb[k].qty; tl+=pb[k].qty*pb[k].landed; tb+=pb[k].qty*pb[k].buy; }
     if(tq>0){ landed=tl/tq; buy=tb/tq; }   // weighted by real pairings
     c.modalLanded=landed; c.modalBuy=buy; c.modalShipFee=landed-buy;
+    c.avgLanded=landed; c.avgBuy=buy;   // composites carry no stock_levels cost of their own
     c.isComposite=true;
     if(landed>0) c.modalSource="composite";
   }
@@ -2423,6 +2424,7 @@ function renderStock(){
       +'<div class="card">'
         +'<div class="chart-controls" style="margin-bottom:10px;"><div class="ctl-row grow"><span class="ctl-lbl">Search</span>'
           +'<input class="inp" id="stkQ" type="search" autocomplete="off" placeholder="product name…"></div></div>'
+        +'<div class="ttotals" id="stkValues" style="margin:2px 0 10px;"></div>'
         +'<div class="mg-count" id="stkCount"></div>'
         +'<div id="stkTable">'+ '' +'</div>'
       +'</div>';
@@ -2435,10 +2437,18 @@ function paintStockBody(){
   if(!products.length){ el("stkTable").innerHTML='<div class="empty">No products.</div>'; el("stkCount").textContent=""; return; }
   var q=(stockState.q||"").toLowerCase().trim();
   var rows=arr(products).filter(function(p){ return !q || prodName(p).toLowerCase().indexOf(q)>=0; });
-  // on-hand value = (warehouse + store + transit) × landed cost. Excludes ⏳ on-order
-  // (not received yet). Uses modalLanded — the product's real avg landed modal.
+  // Value each bucket exactly like the Inventory KPI does: received stock
+  // (warehouse/store/transit) at avg LANDED cost, on-order at avg BUY cost — nothing
+  // has shipped for it yet, so it carries no shipping. Composites fall back to their
+  // derived pair cost. Summing these ties the tab to the Inventory card.
+  function landedOf(p){ return +p.avgLanded || +p.modalLanded || 0; }
+  function buyOf(p){ return +p.avgBuy || +p.modalBuy || 0; }
   function onHand(p){ return (+p.inWarehouse||0)+(+p.inStore||0)+(+p.inTransit||0); }
-  function stkValue(p){ return onHand(p)*(+p.modalLanded||0); }
+  function valWh(p){ return (+p.inWarehouse||0)*landedOf(p); }
+  function valSt(p){ return (+p.inStore||0)*landedOf(p); }
+  function valTr(p){ return (+p.inTransit||0)*landedOf(p); }
+  function valOo(p){ return (+p.onOrder||0)*buyOf(p); }
+  function stkValue(p){ return valWh(p)+valSt(p)+valTr(p)+valOo(p); }
   var k=stockState.sortKey, dir=stockState.sortDir;
   rows.sort(function(a,b){
     var va,vb;
@@ -2450,14 +2460,30 @@ function paintStockBody(){
   });
   // Composite rows (BBWF) are a view of stock already counted in their parts —
   // include them in the table but NEVER in the totals, or every paired card counts twice.
-  var t={inWarehouse:0,inStore:0,inTransit:0,onOrder:0,totalStock:0,value:0}, nComp=0;
+  var t={inWarehouse:0,inStore:0,inTransit:0,onOrder:0,totalStock:0,value:0,
+         vWh:0,vSt:0,vTr:0,vOo:0}, nComp=0;
   rows.forEach(function(p){
     if(p.isComposite){ nComp++; return; }
     t.inWarehouse+=+p.inWarehouse||0; t.inStore+=+p.inStore||0; t.inTransit+=+p.inTransit||0;
-    t.onOrder+=+p.onOrder||0; t.totalStock+=+p.totalStock||0; t.value+=stkValue(p);
+    t.onOrder+=+p.onOrder||0; t.totalStock+=+p.totalStock||0;
+    t.vWh+=valWh(p); t.vSt+=valSt(p); t.vTr+=valTr(p); t.vOo+=valOo(p);
+    t.value+=stkValue(p);
   });
-  el("stkCount").innerHTML=num(rows.length)+' products · 🏠 '+num(t.inWarehouse)+' · 🏬 '+num(t.inStore)+' · 🚚 '+num(t.inTransit)+' · ⏳ '+num(t.onOrder)+' · 📦 total <b>'+num(t.totalStock)+'</b> · 💰 on-hand value <b>'+money(t.value)+'</b>'
-    +(nComp?' <span style="color:var(--muted);">· '+num(nComp)+' composite row'+(nComp===1?'':'s')+' shown but not added (already counted in their parts)</span>':'');
+  function vcell(icon,label,units,val){
+    return '<div class="ttotal"><div class="t">'+icon+' '+label+'</div>'
+      +'<div class="v num">'+money(val)+'</div>'
+      +'<div class="t" style="margin-top:2px;">'+num(units)+' units</div></div>';
+  }
+  el("stkValues").innerHTML=
+     vcell("🏠","Warehouse",t.inWarehouse,t.vWh)
+    +vcell("🏬","Store",t.inStore,t.vSt)
+    +vcell("🚚","In transit",t.inTransit,t.vTr)
+    +vcell("⏳","On order",t.onOrder,t.vOo)
+    +'<div class="ttotal"><div class="t">📦 Total inventory</div>'
+      +'<div class="v num">'+money(t.value)+'</div>'
+      +'<div class="t" style="margin-top:2px;">'+num(t.totalStock)+' units</div></div>';
+  el("stkCount").innerHTML=num(rows.length)+' products · on-order valued at buy cost (no shipping booked yet)'
+    +(nComp?' · <span style="color:var(--muted);">'+num(nComp)+' composite row'+(nComp===1?'':'s')+' shown but not added (already counted in their parts)</span>':'');
   function th(key,label){ var a=stockState.sortKey===key?(stockState.sortDir===-1?" ↓":" ↑"):""; return '<th class="stk-sort" data-k="'+key+'" style="cursor:pointer;white-space:nowrap;">'+label+a+'</th>'; }
   function cell(n){ n=+n||0; return '<td class="num"'+(n===0?' style="color:var(--muted);opacity:.4;"':'')+'>'+num(n)+'</td>'; }
   var body=rows.map(function(p){
