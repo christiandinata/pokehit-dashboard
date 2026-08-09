@@ -767,6 +767,55 @@ function prodName(p){
   return p.name || [p.setName,p.language,p.type].filter(Boolean).join(" ") || ("Product "+(p.productId||"?"));
 }
 
+/* Composite products (BBWF = 1 Black Bolt + 1 White Flare) hold no stock of their
+   own. Derive the pair count per location from the parts, then SUBTRACT the paired
+   units from the parts so the same physical card is never counted twice: what you
+   see is "300 BBWF + 35 unpaired Black Bolt", not 300+335+300. Cost of a pair is
+   the sum of the parts' own landed costs, so a part bought separately keeps its
+   own price. */
+function applyComposites(list){
+  var byId={}, i;
+  for(i=0;i<list.length;i++) byId[list[i].productId]=list[i];
+  var FIELDS=["inWarehouse","inStore","inTransit","onOrder"];
+  for(i=0;i<list.length;i++){
+    var c=list[i], comps=arr(c.components);
+    if(!comps.length) continue;
+    var parts=[], ok=true;
+    for(var j=0;j<comps.length;j++){
+      var part=byId[comps[j].productId];
+      if(!part){ ok=false; break; }
+      parts.push({p:part, q:Math.max(1,+comps[j].quantity||1)});
+    }
+    if(!ok||!parts.length) continue;
+    for(var f=0;f<FIELDS.length;f++){
+      var key=FIELDS[f], pairs=null;
+      for(var k=0;k<parts.length;k++){
+        var avail=Math.floor((+parts[k].p[key]||0)/parts[k].q);
+        pairs=(pairs===null)?avail:Math.min(pairs,avail);
+      }
+      if(!(pairs>0)) pairs=0;
+      c[key]=pairs;
+      for(k=0;k<parts.length;k++) parts[k].p[key]=(+parts[k].p[key]||0)-pairs*parts[k].q;
+    }
+    var landed=0, buy=0;
+    c.parts=[];
+    for(k=0;k<parts.length;k++){
+      landed+=(+parts[k].p.modalLanded||0)*parts[k].q;
+      buy  +=(+parts[k].p.modalBuy||0)*parts[k].q;
+      c.parts.push({ name:prodName(parts[k].p), qty:parts[k].q,
+                     landed:+parts[k].p.modalLanded||0, buy:+parts[k].p.modalBuy||0 });
+    }
+    c.modalLanded=landed; c.modalBuy=buy; c.modalShipFee=landed-buy;
+    c.isComposite=true;
+    if(landed>0) c.modalSource="composite";
+  }
+  // totals must be recomputed for every product the pass touched
+  for(i=0;i<list.length;i++){
+    var q=list[i];
+    q.totalStock=(+q.inWarehouse||0)+(+q.inStore||0)+(+q.inTransit||0)+(+q.onOrder||0);
+  }
+}
+
 /* ---------- top-level data (populated in boot) ---------- */
 var pnl={}, bal={}, products=[], monthly=[], opex=[], capital=[], cashflow={};
 var dailyPnl=[];               // [{date,orders,units,revenue,cogs,grossProfit,opex,netProfit}]
@@ -1058,7 +1107,20 @@ function renderModal(){
       src = (p.inWarehouse||0)>0 ? "warehouse" : (hasCost ? "historical" : "none");
     }
     var body;
-    if(src==="none"){
+    if(p.isComposite){
+      var prows=arr(p.parts).map(function(x){
+        return '<tr><td style="text-align:left;">🎴 '+esc(x.name)+'</td>'
+          +'<td class="num">×'+num(x.qty)+'</td>'
+          +'<td class="num">'+money(x.buy)+'</td>'
+          +'<td class="num">'+money(x.landed-x.buy)+'</td>'
+          +'<td class="num"><b>'+money(x.landed*x.qty)+'</b></td></tr>';
+      }).join("");
+      body = modalLine(p)
+        +'<div class="nostock" style="font-style:normal;color:var(--muted);">Composite — built from its parts; each part keeps its own FIFO price.</div>'
+        +'<div class="detail"><div class="tscroll"><table><thead><tr>'
+        +'<th>Part</th><th>Per set</th><th>Buy/u</th><th>Ship+fee/u</th><th>Cost</th>'
+        +'</tr></thead><tbody>'+prows+'</tbody></table></div></div>';
+    } else if(src==="none"){
       body = arr(p.modalBatches).length
         ? '<div class="nostock" style="font-style:normal;color:var(--muted);">Not received yet · on-order cost is the buy price (shipping not booked).</div>'
             +'<div class="detail">'+batchTable(p)+'</div>'
@@ -2312,7 +2374,10 @@ function paintStockBody(){
   function cell(n){ n=+n||0; return '<td class="num"'+(n===0?' style="color:var(--muted);opacity:.4;"':'')+'>'+num(n)+'</td>'; }
   var body=rows.map(function(p){
     var val=stkValue(p);
-    return '<tr><td style="text-align:left;">🎴 '+esc(prodName(p))+'</td>'
+    var tag = p.isComposite
+      ? ' <span style="font-size:11px;color:var(--muted);">= '+esc(arr(p.parts).map(function(x){ return (x.qty>1?x.qty+"× ":"")+x.name; }).join(" + "))+'</span>'
+      : '';
+    return '<tr><td style="text-align:left;">🎴 '+esc(prodName(p))+tag+'</td>'
       +cell(p.inWarehouse)+cell(p.inStore)+cell(p.inTransit)+cell(p.onOrder)
       +'<td class="num"><b>'+num(+p.totalStock||0)+'</b></td>'
       +'<td class="num"'+(val===0?' style="color:var(--muted);opacity:.4;"':'')+'>'+money(val)+'</td></tr>';
@@ -2399,6 +2464,7 @@ function boot(){
   products = arr(D.products).sort(function(a,b){
     return prodName(a).toLowerCase().localeCompare(prodName(b).toLowerCase());
   });
+  applyComposites(products);
   monthly = arr(D.monthly);
   opex = arr(D.opex);
   capital = arr(D.capital);
