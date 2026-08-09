@@ -805,6 +805,46 @@ function applyComposites(list){
       c.parts.push({ name:prodName(parts[k].p), qty:parts[k].q,
                      landed:+parts[k].p.modalLanded||0, buy:+parts[k].p.modalBuy||0 });
     }
+    // Pair the parts' own FIFO batches into composite batches, so the composite has
+    // a REAL modal of its own: one row per distinct combination of source batches.
+    // Halves bought on different invoices therefore produce separate rows at their
+    // own combined cost, instead of one blended average.
+    var idx=[], rem=[], pb=[];
+    for(k=0;k<parts.length;k++){
+      parts[k].batches=arr(parts[k].p.modalBatches).filter(function(b){
+        return !b.onOrder && (+b.qtyRemaining||0)>0;
+      });
+      idx.push(0);
+      rem.push(parts[k].batches.length?(+parts[k].batches[0].qtyRemaining||0):0);
+    }
+    while(true){
+      var m=null, can=true;
+      for(k=0;k<parts.length;k++){
+        if(idx[k]>=parts[k].batches.length){ can=false; break; }
+        var avail=Math.floor(rem[k]/parts[k].q);
+        if(avail<=0){ can=false; break; }
+        m=(m===null)?avail:Math.min(m,avail);
+      }
+      if(!can||!(m>0)) break;
+      var pl=0, pbuy=0, srcs=[];
+      for(k=0;k<parts.length;k++){
+        var bt=parts[k].batches[idx[k]];
+        pl  +=(+bt.landedPerUnit||0)*parts[k].q;
+        pbuy+=(+bt.buyPerUnit||0)*parts[k].q;
+        srcs.push({ name:prodName(parts[k].p), qty:parts[k].q, invoiceId:bt.invoiceId,
+                    supplier:bt.supplier, landed:+bt.landedPerUnit||0 });
+        rem[k]-=m*parts[k].q;
+        if(rem[k]<=0){
+          idx[k]++;
+          rem[k]=idx[k]<parts[k].batches.length?(+parts[k].batches[idx[k]].qtyRemaining||0):0;
+        }
+      }
+      pb.push({ qty:m, landed:pl, buy:pbuy, sources:srcs });
+    }
+    c.pairBatches=pb;
+    var tq=0, tl=0, tb=0;
+    for(k=0;k<pb.length;k++){ tq+=pb[k].qty; tl+=pb[k].qty*pb[k].landed; tb+=pb[k].qty*pb[k].buy; }
+    if(tq>0){ landed=tl/tq; buy=tb/tq; }   // weighted by real pairings
     c.modalLanded=landed; c.modalBuy=buy; c.modalShipFee=landed-buy;
     c.isComposite=true;
     if(landed>0) c.modalSource="composite";
@@ -1108,18 +1148,25 @@ function renderModal(){
     }
     var body;
     if(p.isComposite){
-      var prows=arr(p.parts).map(function(x){
-        return '<tr><td style="text-align:left;">🎴 '+esc(x.name)+'</td>'
-          +'<td class="num">×'+num(x.qty)+'</td>'
-          +'<td class="num">'+money(x.buy)+'</td>'
-          +'<td class="num">'+money(x.landed-x.buy)+'</td>'
-          +'<td class="num"><b>'+money(x.landed*x.qty)+'</b></td></tr>';
+      var pbs=arr(p.pairBatches);
+      var prows=pbs.map(function(r){
+        var mix=r.sources.map(function(s){
+          return esc(s.name)+(s.invoiceId?(' <span style="color:var(--muted);">🧾 #'+esc(s.invoiceId)+(s.supplier?(' · '+esc(s.supplier)):'')+'</span>'):'')
+            +' <span style="color:var(--muted);">'+money(s.landed)+(s.qty>1?(' ×'+num(s.qty)):'')+'</span>';
+        }).join('<br>');
+        return '<tr><td style="text-align:left;">'+mix+'</td>'
+          +'<td class="num">'+num(r.qty)+'</td>'
+          +'<td class="num">'+money(r.buy)+'</td>'
+          +'<td class="num">'+money(r.landed-r.buy)+'</td>'
+          +'<td class="num"><b>'+money(r.landed)+'</b></td></tr>';
       }).join("");
       body = modalLine(p)
-        +'<div class="nostock" style="font-style:normal;color:var(--muted);">Composite — built from its parts; each part keeps its own FIFO price.</div>'
+        +'<div class="nostock" style="font-style:normal;color:var(--muted);">Composite — each row is a set built from one batch of every part, at that batch'+"'"+'s own price.</div>'
         +'<div class="detail"><div class="tscroll"><table><thead><tr>'
-        +'<th>Part</th><th>Per set</th><th>Buy/u</th><th>Ship+fee/u</th><th>Cost</th>'
-        +'</tr></thead><tbody>'+prows+'</tbody></table></div></div>';
+        +'<th>Built from</th><th>Sets</th><th>Buy/set</th><th>Ship+fee/set</th><th>Landed/set</th>'
+        +'</tr></thead><tbody>'
+        +(prows||'<tr><td colspan="5" class="empty">No complete sets — one of the parts is out of stock.</td></tr>')
+        +'</tbody></table></div></div>';
     } else if(src==="none"){
       body = arr(p.modalBatches).length
         ? '<div class="nostock" style="font-style:normal;color:var(--muted);">Not received yet · on-order cost is the buy price (shipping not booked).</div>'
