@@ -3404,6 +3404,7 @@ MG.sales = {
           +'<div class="ctl-lbl" style="margin:12px 0 6px;">Add a line</div>'
           +'<div class="fld">'+MG.pickerHtml("mgBsProd")+'</div>'
           +'<div class="mg-grid2">'+MG.f.num("mgBsQty","Quantity","",1)+MG.f.num("mgBsPrice","Unit price (IDR)","",1000)+'</div>'
+          +MG.f.sel("mgBsBatch","Cost batch (optional — blank uses FIFO)",[{v:"",l:"FIFO — oldest stock first"}],"")
           +'<button class="mg-btn" id="mgBsAdd" type="button" style="margin-top:8px;">➕ Add line</button>'
           +'<div class="ctl-lbl" style="margin:14px 0 6px;">Lines</div>'
           +'<div class="tscroll"><table class="mg compact"><thead><tr><th>Product</th><th>Qty</th><th>Unit</th><th>Line total</th><th>After discount</th><th></th></tr></thead><tbody id="mgBsBody"></tbody></table></div>'
@@ -3432,7 +3433,8 @@ MG.sales = {
             spread();
             var b=body.querySelector("#mgBsBody");
             b.innerHTML = lines.length ? lines.map(function(l,i){
-              return '<tr><td style="text-align:left;">🎴 '+esc(MG.prodLabelById(l.product_id))+'</td>'
+              return '<tr><td style="text-align:left;">🎴 '+esc(MG.prodLabelById(l.product_id))
+                +(l.batchLabel?'<span style="display:block;font-size:11px;color:var(--muted);">📌 '+esc(l.batchLabel)+'</span>':'')+'</td>'
                 +'<td class="num">'+num(l.qty)+'</td>'
                 +'<td class="num">'+money(l.price)+'</td>'
                 +'<td class="num">'+money(l.qty*l.price)+'</td>'
@@ -3451,8 +3453,26 @@ MG.sales = {
               +(disc<0?' · <b class="neg">surcharge +'+money(-disc)+'</b>':'')
               +' · charge <b>'+money(fin)+'</b> across '+num(lines.length)+' line'+(lines.length===1?'':'s');
           }
+          var batchOpts=[];
+          function resetBatchSel(){
+            batchOpts=[];
+            body.querySelector("#mgBsBatch").innerHTML='<option value="">FIFO — oldest stock first</option>';
+          }
+          function loadBatches(){
+            var pid=MG.pickerVal(body,"mgBsProd"), sel=body.querySelector("#mgBsBatch");
+            resetBatchSel();
+            if(!pid) return;
+            MG.api("sales.batches",{product_id:+pid}).then(function(d){
+              batchOpts=arr((d||{}).options);
+              sel.innerHTML='<option value="">FIFO — oldest stock first</option>'
+                +batchOpts.map(function(o,i){
+                  return '<option value="'+i+'">'+esc(num(o.qty))+' × '+money(o.cost)+' each</option>';
+                }).join("");
+            }).catch(function(){});
+          }
           MG.wirePicker(body,"mgBsProd",function(p){
             if(p && p.sale_price_idr && !MG.parseMoney(MG.v(body,"mgBsPrice"))) body.querySelector("#mgBsPrice").value=p.sale_price_idr;
+            loadBatches();
           });
           MG.wirePicks(body,"mgBsLoc"); MG.wirePicks(body,"mgBsCh");
           body.querySelector("#mgBsFinal").addEventListener("input",paint);
@@ -3461,10 +3481,16 @@ MG.sales = {
             var pid=MG.pickerVal(body,"mgBsProd"), q=MG.parseMoney(MG.v(body,"mgBsQty")), pr=MG.parseMoney(MG.v(body,"mgBsPrice"));
             if(!pid){ err.textContent="Pick a product."; return; }
             if(!q){ err.textContent="Quantity required."; return; }
+            var bv=MG.v(body,"mgBsBatch"), bo=(bv==="")?null:batchOpts[+bv];
+            var pref=bo?bo.lines:null, plabel=bo?(money(bo.cost)+" batch"):null;
             var found=null;
-            lines.forEach(function(l){ if(l.product_id===+pid && l.price===pr) found=l; });
-            if(found) found.qty+=q; else lines.push({product_id:+pid, qty:q, price:pr});
+            lines.forEach(function(l){
+              if(l.product_id===+pid && l.price===pr && String(l.batchKey||"")===String(bv)) found=l;
+            });
+            if(found) found.qty+=q;
+            else lines.push({product_id:+pid, qty:q, price:pr, prefer:pref, batchLabel:plabel, batchKey:bv});
             body.querySelector("#mgBsQty").value=""; body.querySelector("#mgBsPrice").value="";
+            resetBatchSel();
             paint();
           });
           body.querySelector("#mgBsCancel").addEventListener("click",close);
@@ -3478,7 +3504,8 @@ MG.sales = {
             var btn=body.querySelector("#mgBsSave"); btn.disabled=true; btn.textContent="Checking stock…";
             // pre-check every line so we don't half-write the basket
             Promise.all(lines.map(function(l){
-              return MG.api("sales.plan",{product_id:l.product_id, quantity:l.qty, from_location:loc});
+              return MG.api("sales.plan",{product_id:l.product_id, quantity:l.qty, from_location:loc,
+                                          prefer_shipment_line_ids:l.prefer||undefined});
             })).then(function(plans){
               var bad=[];
               plans.forEach(function(p,i){
@@ -3494,7 +3521,8 @@ MG.sales = {
                     unit_price_idr: l.qty>0?Math.round(l.share/l.qty):0,
                     total_idr: l.share,
                     from_location:loc, sale_date:date, channel:ch,
-                    customer_name:cust||undefined, notes:notes||undefined
+                    customer_name:cust||undefined, notes:notes||undefined,
+                    prefer_shipment_line_ids:l.prefer||undefined
                   });
                 });
               }, Promise.resolve());
