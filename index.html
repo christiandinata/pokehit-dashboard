@@ -809,37 +809,67 @@ function applyComposites(list){
     // a REAL modal of its own: one row per distinct combination of source batches.
     // Halves bought on different invoices therefore produce separate rows at their
     // own combined cost, instead of one blended average.
-    var idx=[], rem=[], pb=[];
+    // Halves bought on the SAME invoice belong together, so pair within an invoice
+    // first and only then pair whatever is left across invoices. Otherwise a lone
+    // Black Bolt from one invoice would eat a White Flare from another and invent a
+    // set at a blended price that was never actually bought.
+    var pool=[], pb=[];
     for(k=0;k<parts.length;k++){
-      parts[k].batches=arr(parts[k].p.modalBatches).filter(function(b){
+      pool.push(arr(parts[k].p.modalBatches).filter(function(b){
         return !b.onOrder && (+b.qtyRemaining||0)>0;
-      });
-      idx.push(0);
-      rem.push(parts[k].batches.length?(+parts[k].batches[0].qtyRemaining||0):0);
+      }).map(function(b){ return { b:b, left:+b.qtyRemaining||0 }; }));
     }
-    while(true){
-      var m=null, can=true;
-      for(k=0;k<parts.length;k++){
-        if(idx[k]>=parts[k].batches.length){ can=false; break; }
-        var avail=Math.floor(rem[k]/parts[k].q);
-        if(avail<=0){ can=false; break; }
+    function firstIdx(pi, inv){
+      for(var i=0;i<pool[pi].length;i++){
+        if(pool[pi][i].left<=0) continue;
+        if(inv===null || pool[pi][i].b.invoiceId===inv) return i;
+      }
+      return -1;
+    }
+    function emitPair(sel){
+      var m=null, z;
+      for(z=0;z<parts.length;z++){
+        var avail=Math.floor(pool[z][sel[z]].left/parts[z].q);
         m=(m===null)?avail:Math.min(m,avail);
       }
-      if(!can||!(m>0)) break;
+      if(!(m>0)) return false;
       var pl=0, pbuy=0, srcs=[];
-      for(k=0;k<parts.length;k++){
-        var bt=parts[k].batches[idx[k]];
-        pl  +=(+bt.landedPerUnit||0)*parts[k].q;
-        pbuy+=(+bt.buyPerUnit||0)*parts[k].q;
-        srcs.push({ name:prodName(parts[k].p), qty:parts[k].q, invoiceId:bt.invoiceId,
+      for(z=0;z<parts.length;z++){
+        var e=pool[z][sel[z]], bt=e.b;
+        pl  +=(+bt.landedPerUnit||0)*parts[z].q;
+        pbuy+=(+bt.buyPerUnit||0)*parts[z].q;
+        srcs.push({ name:prodName(parts[z].p), qty:parts[z].q, invoiceId:bt.invoiceId,
                     supplier:bt.supplier, landed:+bt.landedPerUnit||0 });
-        rem[k]-=m*parts[k].q;
-        if(rem[k]<=0){
-          idx[k]++;
-          rem[k]=idx[k]<parts[k].batches.length?(+parts[k].batches[idx[k]].qtyRemaining||0):0;
-        }
+        e.left-=m*parts[z].q;
       }
       pb.push({ qty:m, landed:pl, buy:pbuy, sources:srcs });
+      return true;
+    }
+    var invOrder=[];
+    for(k=0;k<pool[0].length;k++){
+      var iv=pool[0][k].b.invoiceId;
+      if(iv!=null && invOrder.indexOf(iv)<0) invOrder.push(iv);
+    }
+    var pass, sel, okSel, z2;
+    for(pass=0; pass<invOrder.length; pass++){
+      while(true){
+        sel=[]; okSel=true;
+        for(z2=0;z2<parts.length;z2++){
+          var ix=firstIdx(z2, invOrder[pass]);
+          if(ix<0){ okSel=false; break; }
+          sel.push(ix);
+        }
+        if(!okSel || !emitPair(sel)) break;
+      }
+    }
+    while(true){
+      sel=[]; okSel=true;
+      for(z2=0;z2<parts.length;z2++){
+        var ix2=firstIdx(z2, null);
+        if(ix2<0){ okSel=false; break; }
+        sel.push(ix2);
+      }
+      if(!okSel || !emitPair(sel)) break;
     }
     c.pairBatches=pb;
     var tq=0, tl=0, tb=0;
