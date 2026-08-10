@@ -2919,6 +2919,31 @@ MG.prodLabel = function(p){
   if(!p) return "—";
   return [p.set_name, p.language, p.type_name].filter(Boolean).join(" ");
 };
+
+/* Shipping + payment status for an invoices.list row. NOTE the status lives under
+   r.fulfillment / r.payments — reading r.shipping_status directly always yields
+   undefined, which silently disabled the "open invoices only" filter. */
+MG.invShipStatus = function(r){
+  var f=r.fulfillment||{};
+  return f.shipping_status || (r.closed_with_shortage?"closed_with_shortage":"unshipped");
+};
+MG.invHasOpenLines = function(r){
+  var st=MG.invShipStatus(r);
+  return st!=="fully_shipped" && st!=="closed_with_shortage";
+};
+MG.invOptLabel = function(r){
+  var st=MG.invShipStatus(r), pay=(r.payments||{}).payment_status;
+  var shipTxt = st==="fully_shipped" ? "🏠 shipped"
+              : st==="partial" ? "🚚 partly shipped"
+              : st==="closed_with_shortage" ? "🔒 closed short"
+              : "⏳ not shipped";
+  var payTxt = pay==="fully_paid" ? "✅ paid"
+             : (pay==="partial"||pay==="dp_paid") ? "🟡 part-paid"
+             : "💸 unpaid";
+  return "#"+r.id+" · "+(r.supplier_name||MG.partyName(r.supplier_id))
+       + " · "+MG.dstr(r.invoice_date)+" · "+shipTxt+" · "+payTxt;
+};
+
 MG.prodLabelById = function(id){
   var p=MG.prodById(id);
   return p ? MG.prodLabel(p) : ("#"+id);
@@ -4435,7 +4460,7 @@ MG.ship = {
               var invs=arr((dd||{}).invoices||dd);
               var sel=body.querySelector("#mgSeInv");
               sel.innerHTML='<option value="">— pick an invoice —</option>'+invs.map(function(r){
-                return '<option value="'+r.id+'">#'+r.id+' · '+esc(r.supplier_name||MG.partyName(r.supplier_id))+' · '+esc(MG.dstr(r.invoice_date))+'</option>';
+                return '<option value="'+r.id+'">'+esc(MG.invOptLabel(r))+'</option>';
               }).join("");
               sel.addEventListener("change",function(e){ loadInvoiceLines(e.target.value); });
             }).catch(function(e){ body.querySelector("#mgSeErr").textContent=e.message; });
@@ -4560,13 +4585,13 @@ MG.ship = {
         // fill invoice dropdown
         MG.api("invoices.list",{}).then(function(d){
           var invs=arr((d||{}).invoices||d);
-          var open=invs.filter(function(r){ return r.shipping_status!=="fully_shipped" && r.shipping_status!=="closed_with_shortage"; });
+          var open=invs.filter(MG.invHasOpenLines);
           var list=open.length?open:invs;
           var sel=body.querySelector("#mgNshInv");
           sel.innerHTML='<option value="">— pick an invoice —</option>'+list.map(function(r){
-            var sup=r.supplier_name||MG.partyName(r.supplier_id);
-            return '<option value="'+r.id+'">#'+r.id+' · '+esc(sup)+' · '+esc(MG.dstr(r.invoice_date))+'</option>';
-          }).join("");
+            return '<option value="'+r.id+'">'+esc(MG.invOptLabel(r))+'</option>';
+          }).join("")
+            +(open.length<invs.length?'<option value="" disabled>── '+num(invs.length-open.length)+' fully shipped / closed hidden ──</option>':'');
           sel.addEventListener("change",function(e){ loadInvoiceLines(e.target.value); });
         }).catch(function(err){ body.querySelector("#mgNshErr").textContent=err.message; });
 
