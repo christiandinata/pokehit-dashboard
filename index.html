@@ -3613,6 +3613,8 @@ MG.sales = {
         +MG.f.text("mgEsCust","Customer",s.customer_name||"")
         +MG.f.picks("mgEsCh","Channel",chans,s.channel||"manual")
         +MG.f.text("mgEsNotes","Notes",s.notes||"")
+        +'<div class="ctl-lbl" style="margin:12px 0 6px;">Cost basis — batches this sale consumed</div>'
+        +'<div id="mgEsAlloc" class="mg-plan">Loading…</div>'
         +'<div class="mg-err" id="mgEsErr"></div>'
         +'<div class="mg-foot">'
           +'<button class="mg-btn danger" id="mgEsDel" type="button">🗑 Delete</button>'
@@ -3622,6 +3624,25 @@ MG.sales = {
         +'</div>'
       +'</div>',
       onMount:function(body, close){
+        // Which cost batches this sale was costed against (locked at sale time).
+        MG.api("sales.allocations",{id:s.id}).then(function(d){
+          var al=arr((d||{}).allocations), box=body.querySelector("#mgEsAlloc");
+          if(!box) return;
+          if(!al.length){ box.className="mg-plan bad"; box.textContent="No cost allocation recorded — COGS is 0 for this sale."; return; }
+          var tot=0; al.forEach(function(a){ tot+=a.quantity*a.cogs_per_unit_idr; });
+          box.className="mg-plan ok";
+          box.innerHTML=al.map(function(a){
+            return '🎴 '+esc(MG.prodLabelById(a.product_id))+' · '+num(a.quantity)+' × '+money(a.cogs_per_unit_idr)
+              +'<span style="display:block;font-size:11px;color:var(--muted);">'
+              +(a.invoice_id?('🧾 #'+esc(a.invoice_id)+(a.supplier?(' · '+esc(a.supplier)):'')+' · '):'')
+              +'🚚 '+esc(a.shipment_label||('ship #'+a.shipment_id))+(a.shipment_date?(' · '+esc(MG.dstr(a.shipment_date))):'')
+              +'</span>';
+          }).join("")
+            +'<div style="margin-top:6px;">Total COGS <b>'+money(tot)+'</b></div>';
+        }).catch(function(e){
+          var box=body.querySelector("#mgEsAlloc");
+          if(box){ box.className="mg-plan bad"; box.textContent="Could not load cost basis: "+e.message; }
+        });
         MG.wirePicks(body,"mgEsCh");
         var lastEdited="price";
         function eq(){ return Math.max(0, MG.parseMoney(MG.v(body,"mgEsQty"))); }
