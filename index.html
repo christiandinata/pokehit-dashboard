@@ -4065,7 +4065,12 @@ MG.invoices = {
       var rate=1, i;
       for(i=0;i<lines.length;i++){ if(+lines[i].cost_per_unit>0 && +lines[i].cost_per_unit_idr>0){ rate=(+lines[i].cost_per_unit_idr)/(+lines[i].cost_per_unit); break; } }
       // total = qty × cost is held constant; changing qty re-spreads it into a new unit cost.
-      var work=lines.map(function(l){ var q=+l.quantity_ordered||0, c=+l.cost_per_unit||0; return {id:l.id, product_id:l.product_id, qty:q, cost:c, total:q*c, del:false, isNew:false}; });
+      var ful={}; arr(d.line_fulfillment).forEach(function(f){ ful[f.invoice_line_id]=f; });
+      var work=lines.map(function(l){
+        var q=+l.quantity_ordered||0, c=+l.cost_per_unit||0;
+        return {id:l.id, product_id:l.product_id, qty:q, cost:c, total:q*c, del:false, isNew:false,
+                shipped:+((ful[l.id]||{}).quantity_shipped)||0};
+      });
       MG.loadCatalog().then(function(){
         MG.modal({ title:"✏️ Edit invoice #"+id, wide:true,
           sub:"👤 "+esc(inv.supplier_name||MG.partyName(inv.supplier_id))+" · "+esc(ccy)+(ccy!=="IDR"?(" · IDR = native × "+(Math.round(rate*100)/100)):""),
@@ -4089,7 +4094,9 @@ MG.invoices = {
                 return '<tr><td style="text-align:left;">🎴 '+esc(MG.prodLabelById(w.product_id))+(w.isNew?' <span style="color:var(--green);font-size:11px;">new</span>':'')+'</td>'
                   +'<td><input class="inp num" data-q="'+idx+'" value="'+esc(w.qty)+'" style="width:88px;"></td>'
                   +'<td><input class="inp num" data-c="'+idx+'" value="'+esc(w.cost)+'" style="width:108px;"></td>'
-                  +'<td><button class="mg-iconbtn" data-del="'+idx+'" title="Remove">🗑️</button></td></tr>';
+                  +'<td>'+(w.shipped>0
+                      ? '<span class="mg-iconbtn" style="opacity:.35;cursor:not-allowed;" title="Already on a shipment ('+num(w.shipped)+' units) — remove it from that shipment first">🚚</span>'
+                      : '<button class="mg-iconbtn" data-del="'+idx+'" title="Remove">🗑️</button>')+'</td></tr>';
               }).join("");
               b.innerHTML=html||'<tr><td colspan="4" class="empty">No lines — add one below.</td></tr>';
               Array.prototype.forEach.call(b.querySelectorAll("[data-q]"),function(inp){ inp.addEventListener("input",function(){
@@ -4128,7 +4135,13 @@ MG.invoices = {
               if(payload.invoice_date===undefined && payload.notes===undefined && !add.length && !upd.length && !del.length){ close(); return; }
               var btn=body.querySelector("#mgIeSave"); btn.disabled=true; btn.textContent="Saving…";
               MG.api("invoices.update",payload).then(function(){ close(); MG.toast("Invoice #"+id+" updated","ok"); self.fetch(); MG.loadCatalog(true); })
-                .catch(function(e){ btn.disabled=false; btn.textContent="Save changes"; err.textContent=e.message; });
+                .catch(function(e){
+                  btn.disabled=false; btn.textContent="Save changes";
+                  var m=String(e.message||"");
+                  err.textContent = m.indexOf("shipment_lines_invoice_line_id_fkey")>=0
+                    ? "That line is already on a shipment. Open the shipment, remove the line (or delete the shipment), then delete it here."
+                    : m;
+                });
             });
           }
         });
