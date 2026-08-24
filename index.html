@@ -13,6 +13,9 @@
     --bg:#0a0f16; --surface:#121b29; --surface-2:#18233440; --panel-b:#0e1622;
     --acc:#4c9aff; --acc-2:#8b5cf6;
     --green:#34d399; --amber:#fbbf24; --red:#fb7185;
+    /* staff-entered rows — same accent the staff page (catat.html) uses, so the
+       colour carries one meaning across both surfaces */
+    --staff:#f2b45c;
     --text:#e8eef5; --muted:#8499ad; --border:#233246;
     --sb-w:232px;
     --shadow:0 1px 0 rgba(255,255,255,.02) inset, 0 8px 24px rgba(0,0,0,.25);
@@ -494,6 +497,13 @@
   .mg-iconbtn:hover{opacity:1;background:var(--surface-2);}
   table.mg td,table.mg th{white-space:nowrap;}
   tr.mg-click{cursor:pointer;}
+  /* Rows logged by staff on the phone page (catat.html). Amber is that page's own
+     accent, so the colour means the same thing on both surfaces. The chip carries
+     the same information as the colour — colour alone is not a label. */
+  tr.by-staff td{background:rgba(242,180,92,.07);}
+  tr.by-staff td:first-child{box-shadow:inset 3px 0 0 var(--staff);}
+  tr.by-staff:hover td{background:rgba(242,180,92,.13);}
+  .mg-chip.staff{border-color:var(--staff);color:var(--staff);background:rgba(242,180,92,.1);}
   .mg-cb{appearance:none;-webkit-appearance:none;width:18px;height:18px;flex:none;cursor:pointer;vertical-align:middle;
     border:1.5px solid var(--border);border-radius:5px;background:var(--panel-b);position:relative;transition:background .15s,border-color .15s;}
   .mg-cb:hover{border-color:var(--acc);}
@@ -3176,7 +3186,7 @@ MG.sales = {
     var q=(this.st.q||"").toLowerCase().trim();
     if(!q) return this.st.rows;
     return this.st.rows.filter(function(s){
-      var hay=((s.product_name||"")+" "+(s.customer_name||"")+" "+(s.channel_order_id||"")+" "+(s.sale_date||"")+" "+(s.channel||"")).toLowerCase();
+      var hay=((s.product_name||"")+" "+(s.customer_name||"")+" "+(s.channel_order_id||"")+" "+(s.sale_date||"")+" "+(s.channel||"")+" "+(s.entered_by||"")).toLowerCase();
       return hay.indexOf(q)>=0;
     });
   },
@@ -3221,7 +3231,9 @@ MG.sales = {
       var loc=MG.locById(s.from_location);
       var checked=self.st.sel[s.id]?' checked':'';
       var name=s.product_name||MG.prodLabelById(s.product_id);
-      return '<tr class="mg-click" data-id="'+s.id+'">'
+      var by=s.entered_by||"";
+      return '<tr class="mg-click'+(by?" by-staff":"")+'" data-id="'+s.id+'"'
+        +(by?' title="Logged by '+esc(by)+' on the staff page"':'')+'>'
         +'<td onclick="event.stopPropagation()"><input type="checkbox" class="mg-cb" data-sel="'+s.id+'"'+checked+'></td>'
         +'<td>'+esc(MG.dstr(s.sale_date))+'</td>'
         +'<td style="max-width:230px;overflow:hidden;text-overflow:ellipsis;">🎴 '+esc(name)+'</td>'
@@ -3229,7 +3241,8 @@ MG.sales = {
         +'<td class="num">'+money(s.unit_price_idr)+'</td>'
         +'<td class="num">'+money(total)+'</td>'
         +'<td style="text-align:left;">'+MG.chChip(s.channel)+'</td>'
-        +'<td style="text-align:left;">'+esc(s.customer_name||"—")+'</td>'
+        +'<td style="text-align:left;">'+esc(s.customer_name||"—")
+          +(by?' <span class="mg-chip staff">✍️ '+esc(by)+'</span>':'')+'</td>'
         +'<td title="'+esc(loc.label)+'">'+loc.icon+'</td>'
         +'<td class="num '+marginClass(m)+'">'+money(profit)+(m!=null?'<span style="display:block;font-size:11px;opacity:.7;">'+pct(m)+'</span>':'')+'</td>'
         +'<td><span class="mg-rowact">'
