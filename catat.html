@@ -115,6 +115,16 @@ main{flex:1;padding:16px 16px 132px;display:flex;flex-direction:column;gap:14px}
 .rowerr{margin:0;padding:10px 13px;background:var(--danger-soft);color:var(--danger);
   font-size:13.5px;font-weight:500}
 
+.srclist{display:flex;flex-direction:column;gap:7px}
+.src{display:flex;align-items:baseline;gap:10px;width:100%;text-align:left;
+  padding:10px 12px;border-radius:11px;border:1px solid var(--line-strong);
+  background:var(--surface-2);color:var(--ink);font:inherit;cursor:pointer}
+.src-main{flex:1;min-width:0;font-weight:600;font-size:14.5px}
+.src-meta{flex:none;font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;
+  font-size:12.5px;color:var(--muted)}
+.src[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.src[aria-pressed="true"] .src-meta{color:var(--accent)}
+
 .paymethods{display:flex;gap:7px}
 .pm{flex:1;padding:10px 4px;border-radius:11px;border:1px solid var(--line-strong);
   background:var(--surface-2);color:var(--muted);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
@@ -244,6 +254,24 @@ function grand(){var t=0;for(var i=0;i<rows.length;i++)t+=lineTotal(rows[i]);ret
 function onHand(p){return p.in_store>0?p.in_store:p.in_warehouse}
 /* products.language is spelled out ("English" / "Japanese"). */
 function isJp(p){return (p.language||"").toLowerCase().indexOf("jap")===0}
+var MONTHS=["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"];
+function shortDate(iso){
+  if(!iso)return "tanpa tanggal";
+  var p=String(iso).split("-");
+  if(p.length<3)return iso;
+  return parseInt(p[2],10)+" "+MONTHS[parseInt(p[1],10)-1]+" "+p[0].slice(2);
+}
+function srcKey(b){return b.lines.join(",")}
+/* Which batch this line is pinned to. No pick yet = the first option, which is
+   also what plain FIFO would take, so the default matches old behaviour. */
+function selBatch(r){
+  if(!r.batches||!r.batches.length)return null;
+  if(!r.prefer.length)return r.batches[0];
+  var k=r.prefer.join(",");
+  for(var i=0;i<r.batches.length;i++){if(srcKey(r.batches[i])===k)return r.batches[i]}
+  return r.batches[0];
+}
+function findRow(id){for(var i=0;i<rows.length;i++){if(rows[i].id===id)return rows[i]}return null}
 
 function call(action,body,token){
   return fetch(API+action,{
@@ -375,6 +403,8 @@ function card(r){
       hint+
     '</div>'+
 
+    srcField(r)+
+
     '<div class="field"><span class="flabel">Dibayar pakai</span><div class="paymethods">'+
       METHODS.map(function(m){
         return '<button class="pm" type="button" data-act="pm" data-v="'+m+'" aria-pressed="'+(r.method===m)+'">'+m+'</button>';
@@ -389,6 +419,24 @@ function card(r){
       '<div class="num" style="font-size:19px;font-weight:600">'+rp(lineTotal(r))+'</div>'+
     '</div>'+
   '</section>';
+}
+
+/* Only rendered when a product really has more than one cost batch — one source
+   means there is no choice to offer. */
+function srcField(r){
+  if(!r.batches||r.batches.length<2)return "";
+  var sel=selBatch(r);
+  var short=(r.qty>sel.qty)
+    ?'<p class="hint">Sisa di sumber ini <b>'+sel.qty+'</b>. Sisanya otomatis diambil dari sumber berikutnya.</p>'
+    :"";
+  return '<div class="field"><span class="flabel">Ambil dari <span class="plain">(modal beda-beda)</span></span>'+
+    '<div class="srclist">'+
+      r.batches.map(function(b){
+        return '<button class="src" type="button" data-act="src" data-v="'+srcKey(b)+'" aria-pressed="'+(b===sel)+'">'+
+          '<span class="src-main">'+shortDate(b.date)+(b.supplier?' · '+esc(b.supplier):'')+'</span>'+
+          '<span class="src-meta">sisa '+b.qty+' · modal '+rp(b.cost)+'</span></button>';
+      }).join("")+
+    '</div>'+short+'</div>';
 }
 
 function bind(r){
@@ -411,6 +459,14 @@ function bind(r){
 
   var buyer=box.querySelector('[data-act="buyer"]');
   buyer.oninput=function(){r.buyer=buyer.value};
+
+  var srcs=box.querySelectorAll('[data-act="src"]');
+  for(var j=0;j<srcs.length;j++){
+    (function(b){b.onclick=function(){
+      r.prefer=b.dataset.v.split(",").map(Number);
+      render();
+    }})(srcs[j]);
+  }
 
   var pms=box.querySelectorAll('[data-act="pm"]');
   for(var i=0;i<pms.length;i++){
@@ -459,9 +515,19 @@ function listProducts(q){
     (function(b){
       b.onclick=function(){
         var p=prod(parseInt(b.dataset.pid,10));
-        rows.push({id:seq++,pid:p.id,qty:1,price:p.sale_price_idr||0,buyer:"",method:"Transfer",error:null});
+        var id=seq++;
+        rows.push({id:id,pid:p.id,qty:1,price:p.sale_price_idr||0,buyer:"",method:"Transfer",
+          error:null,batches:null,prefer:[]});
         closeSheet();
         render();
+        // Batches arrive after the card is already on screen — the field just
+        // appears once there is a choice worth showing.
+        call("staff.batches",{product_id:p.id}).then(function(d){
+          var row=findRow(id);
+          if(!row)return;
+          row.batches=d.options||[];
+          render();
+        }).catch(function(){});
       };
     })(btns[i]);
   }
@@ -478,8 +544,10 @@ function save(){
   render();
 
   var payload={sale_date:saleDate,lines:rows.map(function(r){
+    var sel=selBatch(r);
     return {product_id:r.pid,quantity:r.qty,unit_price_idr:r.price,
-      customer_name:r.buyer||null,payment_method:r.method};
+      customer_name:r.buyer||null,payment_method:r.method,
+      prefer_shipment_line_ids:sel?sel.lines:[]};
   })};
 
   call("staff.sale",payload).then(function(d){
@@ -487,7 +555,11 @@ function save(){
     var okRows=[],failed=[];
     rows.forEach(function(r,i){
       var res=results[i];
-      if(res&&res.status==="created")okRows.push(r);
+      if(res&&res.status==="created"){
+        var sel=selBatch(r);
+        if(sel&&r.batches&&r.batches.length>1)r.usedSrc=shortDate(sel.date)+(sel.supplier?" · "+sel.supplier:"");
+        okRows.push(r);
+      }
       else{r.error=(res&&res.error)||"gagal disimpan";failed.push(r)}
     });
     sending=false;
@@ -527,7 +599,8 @@ function renderDone(){
           return '<div class="rline"><div class="rline-main">'+
             '<div class="rline-name">'+r.qty+'× '+esc(p.set_name)+'</div>'+
             '<div class="rline-sub">'+esc(p.type_name||"-")+' · '+rp(r.price)+'/pcs · '+esc(r.method)+
-            (r.buyer?" · "+esc(r.buyer):"")+'</div></div>'+
+            (r.buyer?" · "+esc(r.buyer):"")+
+            (r.usedSrc?" · dari "+esc(r.usedSrc):"")+'</div></div>'+
             '<div class="rline-amt">'+rp(r.qty*r.price)+'</div></div>';
         }).join("")+
         '<div class="rline total"><div class="rline-main"><div class="rline-name">Total masuk</div></div>'+
