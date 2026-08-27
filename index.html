@@ -504,6 +504,30 @@
   tr.by-staff td:first-child{box-shadow:inset 3px 0 0 var(--staff);}
   tr.by-staff:hover td{background:rgba(242,180,92,.13);}
   .mg-chip.staff{border-color:var(--staff);color:var(--staff);background:rgba(242,180,92,.1);}
+
+  /* Invoice hover preview — read the contents without opening the row. */
+  .invpop{position:fixed;z-index:80;width:min(430px,calc(100vw - 24px));max-height:70vh;overflow:auto;
+    background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-card);
+    box-shadow:0 18px 44px rgba(0,0,0,.55);padding:12px 13px;pointer-events:none;
+    opacity:0;transform:translateY(-3px);transition:opacity .1s,transform .1s;}
+  .invpop.on{opacity:1;transform:none;}
+  .invpop .ph{display:flex;align-items:baseline;gap:8px;font-size:13px;font-weight:700;margin-bottom:9px;
+    padding-bottom:8px;border-bottom:1px solid var(--border);}
+  .invpop .ph .sup{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .invpop .ph .dt{color:var(--muted);font-weight:600;font-size:12px;flex:none;}
+  .invpop table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .invpop th{color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;
+    text-align:right;padding:0 0 5px;}
+  .invpop th:first-child{text-align:left;}
+  .invpop td{padding:3px 0;text-align:right;white-space:nowrap;}
+  .invpop td:first-child{text-align:left;max-width:190px;overflow:hidden;text-overflow:ellipsis;}
+  .invpop td+td{padding-left:10px;}
+  .invpop .short{color:var(--amber);}
+  .invpop .pf{display:flex;gap:14px;flex-wrap:wrap;margin-top:9px;padding-top:8px;border-top:1px solid var(--border);}
+  .invpop .pf div{font-size:11.5px;color:var(--muted);}
+  .invpop .pf b{display:block;font-size:13.5px;color:var(--text);font-variant-numeric:tabular-nums;}
+  .invpop .more{color:var(--muted);font-size:11.5px;padding-top:5px;}
+  .invpop .loading{color:var(--muted);font-size:12.5px;}
   .mg-cb{appearance:none;-webkit-appearance:none;width:18px;height:18px;flex:none;cursor:pointer;vertical-align:middle;
     border:1.5px solid var(--border);border-radius:5px;background:var(--panel-b);position:relative;transition:background .15s,border-color .15s;}
   .mg-cb:hover{border-color:var(--acc);}
@@ -3861,6 +3885,137 @@ MG.products = {
 };
 
 /* ===================== MANAGE · INVOICES ===================== */
+/* Invoice hover preview. Fetches invoices.get once per invoice and keeps it, so
+   moving back over a row is instant. Pointer-device only — a phone has no hover,
+   and tapping the row already opens the full detail. */
+var INVPOP = {
+  node:null, cache:{}, inflight:{}, timer:null, forId:null,
+
+  can:function(){
+    return !!(window.matchMedia && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
+  },
+
+  box:function(){
+    if(!this.node){
+      this.node=document.createElement("div");
+      this.node.className="invpop";
+      document.body.appendChild(this.node);
+    }
+    return this.node;
+  },
+
+  attach:function(row, id){
+    var self=this;
+    if(!this.can()) return;
+    row.addEventListener("mouseenter",function(){
+      clearTimeout(self.timer);
+      // Short delay so sweeping the cursor down the table doesn't fire 50 fetches.
+      self.timer=setTimeout(function(){ self.open(row, id); }, 220);
+    });
+    row.addEventListener("mouseleave",function(){
+      clearTimeout(self.timer);
+      self.hide();
+    });
+  },
+
+  open:function(row, id){
+    var self=this;
+    this.forId=id;
+    var b=this.box();
+    b.innerHTML='<div class="loading">Loading #'+id+'…</div>';
+    this.place(row);
+    b.classList.add("on");
+
+    var hit=this.cache[id];
+    if(hit){ this.fill(id, hit, row); return; }
+    if(!this.inflight[id]){
+      this.inflight[id]=MG.api("invoices.get",{id:id}).then(function(d){
+        self.cache[id]=d||{};
+        delete self.inflight[id];
+        return self.cache[id];
+      }).catch(function(err){
+        delete self.inflight[id];
+        throw err;
+      });
+    }
+    this.inflight[id].then(function(d){
+      if(self.forId===id) self.fill(id, d, row);
+    }).catch(function(err){
+      if(self.forId===id) self.box().innerHTML='<div class="loading">Could not load #'+id+' — '+esc(err.message||"error")+'</div>';
+    });
+  },
+
+  fill:function(id, d, row){
+    var inv=d.invoice||{}, lines=arr(d.lines), paySum=d.payments||{};
+    var ful={}; arr(d.line_fulfillment).forEach(function(f){ ful[f.invoice_line_id]=f; });
+    var ccy=inv.currency||"IDR";
+    var totalIdr=0, totalNative=0;
+    lines.forEach(function(l){
+      var qo=+l.quantity_ordered||0;
+      totalIdr+=qo*(+l.cost_per_unit_idr||0);
+      totalNative+=qo*(+l.cost_per_unit||0);
+    });
+
+    var CAP=9, shown=lines.slice(0,CAP);
+    var rowsHtml=shown.map(function(l){
+      var f=ful[l.id]||{};
+      var qo=+l.quantity_ordered||0;
+      var shipped=(f.quantity_shipped!=null)?+f.quantity_shipped
+        :(l.quantity_shipped!=null?+l.quantity_shipped:null);
+      var short=(shipped!=null && shipped<qo);
+      return '<tr><td>🎴 '+esc(MG.prodLabelById(l.product_id))+'</td>'
+        +'<td>'+num(qo)+'</td>'
+        +'<td'+(short?' class="short"':'')+'>'+(shipped==null?"—":num(shipped))+'</td>'
+        +'<td>'+money(l.cost_per_unit_idr)+'</td></tr>';
+    }).join("");
+
+    var paidIdr=(paySum.paid_idr!=null)?(+paySum.paid_idr||0):0;
+    var out=totalIdr-paidIdr;
+
+    this.box().innerHTML=
+      '<div class="ph"><span class="sup">🧾 #'+id+' · 👤 '+esc(inv.supplier_name||MG.partyName(inv.supplier_id))+'</span>'
+        +'<span class="dt">'+esc(MG.dstr(inv.invoice_date))+' · '+esc(ccy)+'</span></div>'
+      +(lines.length
+        ? '<table><thead><tr><th>Product</th><th>Ord</th><th>Ship</th><th>Unit (IDR)</th></tr></thead>'
+          +'<tbody>'+rowsHtml+'</tbody></table>'
+          +(lines.length>CAP?'<div class="more">+'+num(lines.length-CAP)+' more line'+(lines.length-CAP===1?"":"s")+' — open the row to see all</div>':'')
+        : '<div class="loading">No lines on this invoice.</div>')
+      +'<div class="pf">'
+        +(ccy!=="IDR"?'<div>Total ('+esc(ccy)+')<b>'+dec(totalNative)+'</b></div>':'')
+        +'<div>Total<b>'+money(totalIdr)+'</b></div>'
+        +'<div>Paid<b>'+money(paidIdr)+'</b></div>'
+        +'<div>Outstanding<b'+(out>0?' style="color:var(--red);"':'')+'>'+money(out)+'</b></div>'
+        +(inv.closed_with_shortage?'<div>Status<b style="color:var(--muted);">🔒 closed short</b></div>':'')
+      +'</div>'
+      +(inv.notes?'<div class="more">📝 '+esc(inv.notes)+'</div>':'');
+    this.place(row);
+  },
+
+  /* Sit beside the row, flipping side and clamping vertically so the card is
+     never half off-screen on the last rows of a long table. */
+  place:function(row){
+    var b=this.box(), r=row.getBoundingClientRect(), pad=10;
+    var w=b.offsetWidth||430, h=b.offsetHeight||220;
+    var left=r.right+pad;
+    if(left+w>window.innerWidth-pad) left=r.left-w-pad;       // flip to the left
+    if(left<pad){
+      // A wide table leaves room on neither side: overlap it, right-aligned to
+      // the row, which stays next to what the cursor is on.
+      left=Math.min(window.innerWidth-w-pad, Math.max(pad, r.right-w));
+    }
+    var top=r.top+r.height/2-h/2;
+    if(top<pad) top=pad;
+    if(top+h>window.innerHeight-pad) top=Math.max(pad, window.innerHeight-h-pad);
+    b.style.left=Math.round(left)+"px";
+    b.style.top=Math.round(top)+"px";
+  },
+
+  hide:function(){
+    this.forId=null;
+    if(this.node) this.node.classList.remove("on");
+  }
+};
+
 MG.invoices = {
   st:{ rows:[], q:"", built:false, shipFilter:"" },
 
@@ -3976,7 +4131,7 @@ MG.invoices = {
       +'<div class="tscroll"><table class="mg"><thead><tr>'
       +'<th>Invoice</th><th>Supplier</th><th>Date</th><th>Ccy</th><th>Total</th><th>Shipping</th><th>Payment</th>'
       +'</tr></thead><tbody>'+body+'</tbody></table></div>'
-      +'<div class="mg-count" style="margin-top:8px;">Tap a row for detail · 🔒 closed short = unshipped remainder written off</div>';
+      +'<div class="mg-count" style="margin-top:8px;">Hover a row to preview its lines · tap for full detail · 🔒 closed short = unshipped remainder written off</div>';
     Array.prototype.forEach.call(el("mgInvTable").querySelectorAll("[data-sf]"),function(c){
       c.addEventListener("click",function(){
         var k=c.getAttribute("data-sf");
@@ -3986,8 +4141,11 @@ MG.invoices = {
     });
     Array.prototype.forEach.call(el("mgInvTable").querySelectorAll("tr.mg-click"),function(r){
       r.addEventListener("click",function(){ self.detail(+r.getAttribute("data-id")); });
+      INVPOP.attach(r, +r.getAttribute("data-id"));
     });
   },
+
+
 
   detail:function(id){
     var self=this;
