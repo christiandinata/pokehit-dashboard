@@ -276,7 +276,7 @@ function findRow(id){for(var i=0;i<rows.length;i++){if(rows[i].id===id)return ro
 function call(action,body,token){
   return fetch(API+action,{
     method:"POST",
-    headers:{"content-type":"application/json","Authorization":"Basic "+(token||TOKEN)},
+    headers:{"content-type":"application/json","Authorization":"Basic "+(token||TOKEN),"x-region":"ap-northeast-1"},
     body:JSON.stringify(body||{})
   }).then(function(r){
     if(r.status===401||r.status===403){var e=new Error("UNAUTHORIZED");e.code=401;throw e}
