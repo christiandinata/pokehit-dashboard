@@ -3158,7 +3158,7 @@ MG.sales = {
            +'<div class="ctl-row"><span class="ctl-lbl">To</span><input class="inp" type="date" id="mgSaleTo"></div>'
            +'<div class="ctl-row"><span class="ctl-lbl">Product</span><select class="dd" id="mgSaleProd"><option value="">All</option></select></div>'
            +'<div class="ctl-row"><span class="ctl-lbl">Channel</span><select class="dd" id="mgSaleCh"><option value="">All</option></select></div>'
-           +'<div class="ctl-row grow"><span class="ctl-lbl">Search</span><input class="inp" type="search" id="mgSaleQ" placeholder="customer, product, order id…"></div>'
+           +'<div class="ctl-row grow"><span class="ctl-lbl">Search</span><input class="inp" type="search" id="mgSaleQ" placeholder="customer, product, order id, notes…"></div>'
            +'<button class="mg-btn" id="mgSaleReload" type="button" title="Reload">↻</button>'
            +'<button class="mg-btn" id="mgSaleBasket" type="button" title="Several products, one agreed total — discount spreads automatically">🧾 Multi-line</button>'
            +'<button class="mg-btn primary" id="mgSaleAdd" type="button">＋ New sale</button>'
@@ -3216,7 +3216,7 @@ MG.sales = {
     var q=(this.st.q||"").toLowerCase().trim();
     if(!q) return this.st.rows;
     return this.st.rows.filter(function(s){
-      var hay=((s.product_name||"")+" "+(s.customer_name||"")+" "+(s.channel_order_id||"")+" "+(s.sale_date||"")+" "+(s.channel||"")+" "+(s.entered_by||"")).toLowerCase();
+      var hay=((s.product_name||"")+" "+(s.customer_name||"")+" "+(s.channel_order_id||"")+" "+(s.sale_date||"")+" "+(s.channel||"")+" "+(s.entered_by||"")+" "+(s.notes||"")).toLowerCase();
       return hay.indexOf(q)>=0;
     });
   },
@@ -3273,6 +3273,7 @@ MG.sales = {
         +'<td style="text-align:left;">'+MG.chChip(s.channel)+'</td>'
         +'<td style="text-align:left;">'+esc(s.customer_name||"—")
           +(by?' <span class="mg-chip staff">✍️ '+esc(by)+'</span>':'')+'</td>'
+        +'<td style="text-align:left;max-width:220px;overflow:hidden;text-overflow:ellipsis;" title="'+esc(s.notes||"")+'">'+esc(s.notes||"—")+'</td>'
         +'<td title="'+esc(loc.label)+'">'+loc.icon+'</td>'
         +'<td class="num '+marginClass(m)+'">'+money(profit)+(m!=null?'<span style="display:block;font-size:11px;opacity:.7;">'+pct(m)+'</span>':'')+'</td>'
         +'<td><span class="mg-rowact">'
@@ -3282,7 +3283,7 @@ MG.sales = {
     }).join("");
     el("mgSaleTable").innerHTML='<div class="tscroll"><table class="mg"><thead><tr>'
       +'<th style="text-align:center;"><input type="checkbox" class="mg-cb" id="mgSaleSelAll" title="Select all on this page"></th>'
-      +'<th>Date</th><th>Product</th><th>Qty</th><th>Unit</th><th>Total</th><th>Channel</th><th>Customer</th><th>Loc</th><th>Profit</th><th></th>'
+      +'<th>Date</th><th>Product</th><th>Qty</th><th>Unit</th><th>Total</th><th>Channel</th><th>Customer</th><th>Notes</th><th>Loc</th><th>Profit</th><th></th>'
       +'</tr></thead><tbody>'+body+'</tbody></table></div>'+pagerHtml();
     var t=el("mgSaleTable");
     Array.prototype.forEach.call(t.querySelectorAll("[data-pg]"),function(b){
