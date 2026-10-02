@@ -2860,6 +2860,7 @@ MG.normLang = function(l){
   if(s==="en"||s==="eng"||s==="english") return "English";
   if(s==="jp"||s==="ja"||s==="japanese") return "Japanese";
   if(s==="cn"||s==="zh"||s==="chinese"||s==="mandarin") return "Chinese";
+  if(s==="id"||s==="ind"||s==="indonesia"||s==="indonesian") return "Indonesia";
   return l ? (l.charAt(0).toUpperCase()+l.slice(1)) : "Japanese";
 };
 
@@ -3841,7 +3842,7 @@ MG.products = {
       body:'<div class="mg-form">'
         +MG.f.text("mgPeSet","Set name",p?p.set_name:"","e.g. Terastal Festival")
         +'<div class="mg-grid2">'
-          +MG.f.picks("mgPeLang","Language",[{id:"English",label:"EN",icon:"🇬🇧"},{id:"Japanese",label:"JP",icon:"🇯🇵"},{id:"Chinese",label:"CN",icon:"🇨🇳"}],p?MG.normLang(p.language):"Japanese")
+          +MG.f.picks("mgPeLang","Language",[{id:"English",label:"EN",icon:"🇬🇧"},{id:"Japanese",label:"JP",icon:"🇯🇵"},{id:"Chinese",label:"CN",icon:"🇨🇳"},{id:"Indonesia",label:"ID",icon:"🇮🇩"}],p?MG.normLang(p.language):"Japanese")
           +MG.f.sel("mgPeType","Type",typeOpts,p?p.product_type_id:(typeOpts.length?typeOpts[0].v:""))
         +'</div>'
         +'<div class="mg-grid2">'
