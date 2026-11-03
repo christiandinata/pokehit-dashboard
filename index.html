@@ -264,6 +264,10 @@
   .hs-rail.on .hs-btn{opacity:1;visibility:visible;}
   .hs-btn:hover{background:var(--acc);border-color:var(--acc);color:#fff;}
   .hs-btn:focus-visible{outline:2px solid var(--acc);outline-offset:2px;}
+  /* Report section nav: a one-line strip, so smaller buttons at the strip's edges */
+  .rp-nav>.hs-wrap{flex:1 1 auto;min-width:0;}
+  .rp-nav .hs-btn{width:30px;height:30px;font-size:18px;box-shadow:0 2px 10px rgba(0,0,0,.5);}
+  .rp-nav .hs-rail.l .hs-btn{margin-left:0;} .rp-nav .hs-rail.r .hs-btn{margin-left:-30px;}
   @media print{.hs-rail{display:none;}}
   table{width:100%;border-collapse:collapse;font-size:13px;min-width:480px;}
   th,td{padding:9px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--border);}
@@ -1403,7 +1407,7 @@ function applyComposites(list){
    Every wide table container (.tscroll, report .rpt-scroll) gets floating
    ◀ ▶ buttons instead of a horizontal scrollbar. A MutationObserver re-scans
    after any re-render, so tabs need no wiring of their own. */
-var HS_SEL=".tscroll,.rpt-scroll";
+var HS_SEL=".tscroll,.rpt-scroll,.rp-navt";
 function hsUpdate(sc){
   var w=sc.parentNode; if(!w || !w.classList || !w.classList.contains("hs-wrap")) return;
   var max=sc.scrollWidth-sc.clientWidth, x=sc.scrollLeft;
