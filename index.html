@@ -8742,6 +8742,10 @@ CR.T = {
   "del.title":"Delete {n} row(s)?",
   "del.sales":"Each sale's stock returns via FIFO reversal and the sale vanishes from every report. This cannot be undone.",
   "del.expenses":"They disappear from the cashflow ledger and every profit figure. This cannot be undone.",
+  "del.invoices":"Their lines and ⏳ on-order stock are removed. Invoices that already have shipments or payments are skipped — the reason is listed after. This cannot be undone.",
+  "del.shipments":"Their units go back to ⏳ on order and their shipping legs are removed. Shipments whose stock was already sold are skipped. This cannot be undone.",
+  "fk.ship":"Already shipped — delete its shipment(s) first","fk.pay":"Has payments recorded — delete those payments first",
+  "fk.sold":"Sales already used this stock — delete those sales first","fk.conv":"Used by a stock conversion — delete that first",
   "del.ok":"Delete","deleted":"Deleted {n}",
   "q.title":"Change quantity?",
   "q.body":"Sale #{id}: {a} → {b} units. Saving re-plans FIFO on the server: the old batch allocations are released and COGS is recomputed from the oldest stock available now. If there isn't enough stock, the old allocations are restored and nothing changes.",
@@ -8798,6 +8802,10 @@ CR.T = {
   "del.title":"Hapus {n} baris?",
   "del.sales":"Stok tiap penjualan dikembalikan lewat pembalikan FIFO, dan penjualannya hilang dari semua laporan. Tidak bisa diurungkan.",
   "del.expenses":"Pengeluarannya hilang dari buku kas dan semua angka laba. Tidak bisa diurungkan.",
+  "del.invoices":"Baris dan stok ⏳ dipesan ikut terhapus. Invoice yang sudah punya pengiriman atau pembayaran dilewati — alasannya ditampilkan setelahnya. Tidak bisa diurungkan.",
+  "del.shipments":"Unitnya kembali ke ⏳ dipesan dan leg ongkirnya ikut terhapus. Pengiriman yang stoknya sudah terjual dilewati. Tidak bisa diurungkan.",
+  "fk.ship":"Sudah dikirim — hapus pengirimannya dulu","fk.pay":"Sudah ada pembayaran — hapus pembayarannya dulu",
+  "fk.sold":"Stok ini sudah terpakai penjualan — hapus penjualannya dulu","fk.conv":"Dipakai konversi stok — hapus konversinya dulu",
   "del.ok":"Hapus","deleted":"{n} dihapus",
   "q.title":"Ubah jumlah?",
   "q.body":"Penjualan #{id}: {a} → {b} unit. Saat disimpan, FIFO dihitung ulang di server: alokasi batch lama dilepas dan HPP dihitung dari stok tertua yang tersedia sekarang. Kalau stoknya tidak cukup, alokasi lama dikembalikan dan tidak ada yang berubah.",
@@ -9111,7 +9119,7 @@ CR.bulkDelete=function(ent){
       if(bad.length) CR.summary(ok,bad); else MG.toast(CR.t("deleted",{ n:num(ok) }),"ok");
       CR.addLog({ ent:ent, bulk:ids.length, w:CR.t("b.del"), b:"", ok:!bad.length, bad:bad.length, err:bad.length?bad[0].m:"" });
       CR.undo=null; CR.paintHead();
-      CR.after(ent, ent==="sales");
+      CR.after(ent, ent!=="expenses");
       CR.paintGrid();
     });
   });
@@ -9368,8 +9376,27 @@ CR.shipChip=function(k){
 };
 CR.iu=function(field,cast){ return CR.upd("invoices.update",field,cast); };
 CR.natMoney=function(v,ccy){ return (v==null||v==="")?"—":(ccy==="IDR"?money(v):dec(v,2)+" "+esc(ccy||"")); };
+// Raw FK violations ("violates foreign key constraint … on table x") → why + what to do first.
+CR.fkMsg=function(e){
+  var m=(e&&e.message)||"error";
+  if(m.indexOf("foreign key")<0) return m;
+  if(m.indexOf("shipment_lines")>=0) return CR.t("fk.ship");
+  if(m.indexOf("transactions")>=0) return CR.t("fk.pay");
+  if(m.indexOf("sale_allocations")>=0) return CR.t("fk.sold");
+  if(m.indexOf("stock_conversions")>=0) return CR.t("fk.conv");
+  return m;
+};
+CR.delBulk=function(){
+  return function(){ return '<button class="mg-btn sm danger" type="button" data-act="b" data-b="del">'+esc(CR.t("b.del"))+'</button>'; };
+};
+CR.delApi=function(action){
+  return function(id){ return MG.api(action,{ id:Number(id) }).catch(function(e){ throw new Error(CR.fkMsg(e)); }); };
+};
 CR.E.invoices={
   sort:{ k:"invoice_date", d:-1 },
+  bulk:CR.delBulk(),
+  bulkRun:function(b){ if(b==="del") CR.bulkDelete("invoices"); },
+  del:CR.delApi("invoices.delete"),
   fetch:function(){ return MG.api("invoices.list",{ limit:5000 }).then(function(d){ return arr((d||{}).invoices); }); },
   hay:function(r){ return "#"+r.id+" "+(r.supplier_name||MG.partyName(r.supplier_id))+" "+(r.invoice_date||"")+" "+(r.currency||"")+" "+(r.notes||""); },
   test:function(r,f){
@@ -9487,6 +9514,9 @@ CR.shipStChip=function(s){
 CR.units=function(r){ var u=0; arr(r.lines).forEach(function(l){ u+=+l.quantity||0; }); return u; };
 CR.E.shipments={
   sort:{ k:"shipment_date", d:-1 },
+  bulk:CR.delBulk(),
+  bulkRun:function(b){ if(b==="del") CR.bulkDelete("shipments"); },
+  del:CR.delApi("shipments.delete"),
   fetch:function(){ return MG.api("shipments.list",{ limit:5000 }).then(function(d){ return arr((d||{}).shipments); }); },
   hay:function(r){ return "#"+r.id+" "+(r.label||"")+" "+(r.shipment_date||"")+" "+(r.notes||"")+" "+(r.stock_status||""); },
   test:function(r,f){ if(f.st && r.stock_status!==f.st) return false; return CR.inRange(r.shipment_date,f); },
