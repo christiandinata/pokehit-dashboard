@@ -965,6 +965,26 @@
   }
 
 
+  /* ===== Report · inventory ===== */
+  .rpi-kpis .rp-kpi{cursor:default;}
+  table.rpi-roll{width:100%;font-size:13.5px;}
+  .rpi-roll th,.rpi-roll td{padding:9px 10px;}
+  .rpi-roll .op{display:inline-block;width:16px;color:var(--muted);font-weight:700;}
+  .rpi-roll tr.tot td{font-weight:800;border-top:1px solid #33465f;background:rgba(76,154,255,.05);}
+  .rpi-roll tr.adj td{color:var(--muted);font-size:12.5px;}
+  .rpi-att{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow:auto;}
+  .rpi-att .it{display:flex;gap:10px;align-items:baseline;font-size:13px;padding:7px 9px;border-radius:9px;background:var(--surface-2);}
+  .rpi-att .it .w{flex:1;min-width:0;}
+  .rpi-att .it .w b{font-weight:650;}
+  .rpi-att .it .m{color:var(--muted);font-size:12px;}
+  .rpi-att .it .v{white-space:nowrap;font-size:12.5px;}
+  .rpi-tag{display:inline-block;font-size:10.5px;font-weight:800;padding:1px 7px;border-radius:999px;margin-right:6px;letter-spacing:.3px;}
+  .rpi-tag.out{background:rgba(239,68,68,.15);color:var(--red);}
+  .rpi-tag.low{background:rgba(245,158,11,.15);color:var(--amber);}
+  .rpi-tag.dead{background:rgba(148,163,184,.15);color:var(--muted);}
+  .rpi-note{font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5;}
+
+
   /* ===== Control Room ===== */
   .wrap:has(#sec-control.active){max-width:1440px;}
   html:has(#sec-control.active),body:has(#sec-control.active){overflow-x:clip;}
@@ -8706,6 +8726,368 @@ RP.addSection({id:"cash-ledger", order:96, navKey:"rt.nav.cash", render:function
     ]});
 }});
 
+})();
+
+
+(function(){
+if(typeof RP==="undefined" || !RP.table) return;
+
+RP.addI18n({
+  en:{
+    "nav.inv":"Inventory","inv.h":"Inventory",
+    "inv.k.value":"Stock value","inv.k.value.s":"{u} sellable units · end of period","inv.k.value.tip":"Units on hand (warehouse + store) at the end of the period × each batch's landed cost",
+    "inv.k.buy":"Purchased","inv.k.buy.s":"{u} units on {n} invoices","inv.k.buy.tip":"Invoice lines dated in the period, at buy price (shipping not included)",
+    "inv.k.in":"Arrived","inv.k.in.s":"{u} units in","inv.k.in.tip":"Batches that arrived in the period, at landed cost",
+    "inv.k.turn":"Stock turnover","inv.k.turn.s":"COGS ÷ average stock","inv.k.turn.tip":"How many times the average stock was sold through in the period. Higher = stock moves faster",
+    "inv.k.dio":"Days of stock","inv.k.dio.s":"at this period's sales pace","inv.k.dio.tip":"Average stock value ÷ COGS per day — how long the stock lasts at this pace",
+    "inv.k.st":"Sell-through","inv.k.st.s":"{s} of {a} units available","inv.k.st.tip":"Units sold ÷ (opening units + units that arrived)",
+    "inv.k.transit":"In transit","inv.k.transit.s":"{u} units · now","inv.k.transit.tip":"Shipped, not arrived yet — current, at landed cost",
+    "inv.k.order":"On order","inv.k.order.s":"{u} units · now","inv.k.order.tip":"Invoiced, not shipped yet — current, at buy price",
+    "inv.k.dead":"Dead stock","inv.k.dead.s":"{n} products, no sale in {d}+ days","inv.k.dead.tip":"Products with stock left and no sale in the last {d} days of the period",
+    "inv.x":"×","inv.days":"{n} days",
+    "inv.roll":"Stock movement","inv.roll.sub":"Opening → closing for the period. Sold is the same locked FIFO COGS as the P&L.",
+    "inv.r.line":"Line","inv.r.units":"Units","inv.r.value":"Value",
+    "inv.r.open":"Opening stock","inv.r.in":"Arrived (purchases)","inv.r.cin":"Arrived (conversions)","inv.r.sold":"Sold (COGS)","inv.r.cout":"Used in conversions",
+    "inv.r.adj":"Cost revaluation","inv.r.close":"Closing stock",
+    "inv.r.adj.n":"Cost revaluation = shipping legs and fees booked after units were sold. Sold keeps the cost locked at sale time, while stock is valued at today's landed cost.",
+    "inv.age":"Stock age","inv.age.sub":"Stock value at the end of the period by days since arrival",
+    "inv.age.b0":"0–30 days","inv.age.b1":"31–60 days","inv.age.b2":"61–90 days","inv.age.b3":"91–180 days","inv.age.b4":"180+ days",
+    "inv.type":"Stock value by type","inv.type.sub":"End of period · click to filter",
+    "inv.att":"Needs attention","inv.att.sub":"Sold out, running low, not moving, or more than 180 days of stock",
+    "inv.att.out":"SOLD OUT","inv.att.low":"LOW","inv.att.dead":"NOT MOVING","inv.att.slow":"OVERSTOCKED","inv.att.slowm":"{u} units ≈ {d} days of stock at this pace",
+    "inv.att.outm":"sold {s} this period, 0 left, nothing incoming","inv.att.lowm":"{u} left ≈ {d} days at this pace",
+    "inv.att.deadm":"{u} units idle · last sale {l}","inv.att.never":"never sold","inv.att.none":"Nothing needs attention right now.",
+    "inv.tabs":"Inventory details","inv.tabs.sub":"Search, filter, sort and export every table",
+    "inv.t.prod":"By product","inv.t.batch":"Batches (FIFO)","inv.t.pipe":"Incoming",
+    "inv.c.product":"Product","inv.c.lang":"Language","inv.c.type":"Type","inv.c.open":"Opening","inv.c.in":"In","inv.c.sold":"Sold",
+    "inv.c.close":"On hand","inv.c.value":"Value","inv.c.avg":"Avg cost","inv.c.price":"Sale price","inv.c.mgn":"Margin at price",
+    "inv.c.st":"Sell-through","inv.c.rate":"Sold / day","inv.c.cover":"Days of cover","inv.c.last":"Last sold","inv.c.age":"Oldest (days)",
+    "inv.c.transit":"In transit","inv.c.order":"On order","inv.c.status":"Status",
+    "inv.c.batch":"Batch","inv.c.arrived":"Arrived","inv.c.qty":"Qty in","inv.c.left":"Left","inv.c.unit":"Landed / unit","inv.c.inv":"Invoice",
+    "inv.c.kind":"Stage","inv.c.ref":"Reference","inv.c.supplier":"Supplier","inv.c.date":"Date","inv.c.units":"Units",
+    "inv.s.ok":"OK","inv.s.out":"Sold out","inv.s.low":"Low","inv.s.dead":"Not moving","inv.s.slow":"Overstocked","inv.s.none":"No stock",
+    "inv.p.transit":"🚚 In transit","inv.p.order":"⏳ On order","inv.p.conv":"conversion",
+    "inv.h.cover":"On hand ÷ units sold per day in this period","inv.h.mgn":"(Sale price − avg landed cost) ÷ sale price",
+    "inv.h.st":"Sold ÷ (opening + in)",
+    "inv.note":"Stock is rebuilt for any date from batch arrival dates and FIFO draws, so past periods show what was on hand then. Values use today's landed cost per batch. In transit and on order are current. Presales dated before their batch arrived count from the sale date.",
+    "inv.loading":"Loading inventory…","inv.err":"Could not load inventory — {m}"
+  },
+  id:{
+    "nav.inv":"Persediaan","inv.h":"Persediaan",
+    "inv.k.value":"Nilai stok","inv.k.value.s":"{u} unit siap jual · akhir periode","inv.k.value.tip":"Unit di tangan (gudang + toko) pada akhir periode × biaya mendarat tiap batch",
+    "inv.k.buy":"Pembelian","inv.k.buy.s":"{u} unit dari {n} invoice","inv.k.buy.tip":"Baris invoice bertanggal di periode ini, dengan harga beli (belum termasuk ongkir)",
+    "inv.k.in":"Stok masuk","inv.k.in.s":"{u} unit masuk","inv.k.in.tip":"Batch yang tiba di periode ini, dengan biaya mendarat",
+    "inv.k.turn":"Perputaran stok","inv.k.turn.s":"HPP ÷ rata-rata stok","inv.k.turn.tip":"Berapa kali rata-rata stok terjual habis dalam periode. Makin tinggi = stok makin cepat berputar",
+    "inv.k.dio":"Umur persediaan","inv.k.dio.s":"dengan laju penjualan periode ini","inv.k.dio.tip":"Rata-rata nilai stok ÷ HPP per hari — berapa lama stok cukup dengan laju ini",
+    "inv.k.st":"Sell-through","inv.k.st.s":"{s} dari {a} unit tersedia","inv.k.st.tip":"Unit terjual ÷ (unit awal + unit masuk)",
+    "inv.k.transit":"Dalam perjalanan","inv.k.transit.s":"{u} unit · saat ini","inv.k.transit.tip":"Sudah dikirim, belum tiba — kondisi saat ini, dengan biaya mendarat",
+    "inv.k.order":"Dipesan","inv.k.order.s":"{u} unit · saat ini","inv.k.order.tip":"Sudah diinvoice, belum dikirim — kondisi saat ini, dengan harga beli",
+    "inv.k.dead":"Stok mati","inv.k.dead.s":"{n} produk, tanpa penjualan {d}+ hari","inv.k.dead.tip":"Produk yang masih ada stok dan tidak terjual dalam {d} hari terakhir periode",
+    "inv.x":"×","inv.days":"{n} hari",
+    "inv.roll":"Pergerakan stok","inv.roll.sub":"Stok awal → stok akhir periode. Terjual = HPP FIFO terkunci yang sama dengan Laba Rugi.",
+    "inv.r.line":"Pos","inv.r.units":"Unit","inv.r.value":"Nilai",
+    "inv.r.open":"Stok awal","inv.r.in":"Masuk (pembelian)","inv.r.cin":"Masuk (konversi)","inv.r.sold":"Terjual (HPP)","inv.r.cout":"Dipakai konversi",
+    "inv.r.adj":"Penyesuaian biaya","inv.r.close":"Stok akhir",
+    "inv.r.adj.n":"Penyesuaian biaya = ongkir dan biaya yang dicatat setelah unitnya terjual. Terjual memakai biaya yang terkunci saat penjualan, sedangkan stok dinilai dengan biaya mendarat hari ini.",
+    "inv.age":"Umur stok","inv.age.sub":"Nilai stok di akhir periode menurut lama sejak tiba",
+    "inv.age.b0":"0–30 hari","inv.age.b1":"31–60 hari","inv.age.b2":"61–90 hari","inv.age.b3":"91–180 hari","inv.age.b4":"180+ hari",
+    "inv.type":"Nilai stok per tipe","inv.type.sub":"Akhir periode · klik untuk memfilter",
+    "inv.att":"Perlu perhatian","inv.att.sub":"Habis, menipis, tidak bergerak, atau stok cukup lebih dari 180 hari",
+    "inv.att.out":"HABIS","inv.att.low":"MENIPIS","inv.att.dead":"TIDAK BERGERAK","inv.att.slow":"KEBANYAKAN","inv.att.slowm":"{u} unit ≈ cukup {d} hari dengan laju ini",
+    "inv.att.outm":"terjual {s} di periode ini, sisa 0, tidak ada yang datang","inv.att.lowm":"sisa {u} ≈ {d} hari dengan laju ini",
+    "inv.att.deadm":"{u} unit diam · terakhir terjual {l}","inv.att.never":"belum pernah terjual","inv.att.none":"Tidak ada yang perlu diperhatikan saat ini.",
+    "inv.tabs":"Rincian persediaan","inv.tabs.sub":"Cari, filter, urutkan, dan ekspor setiap tabel",
+    "inv.t.prod":"Per produk","inv.t.batch":"Batch (FIFO)","inv.t.pipe":"Akan datang",
+    "inv.c.product":"Produk","inv.c.lang":"Bahasa","inv.c.type":"Tipe","inv.c.open":"Awal","inv.c.in":"Masuk","inv.c.sold":"Terjual",
+    "inv.c.close":"Di tangan","inv.c.value":"Nilai","inv.c.avg":"Biaya rata-rata","inv.c.price":"Harga jual","inv.c.mgn":"Margin di harga jual",
+    "inv.c.st":"Sell-through","inv.c.rate":"Terjual / hari","inv.c.cover":"Cukup (hari)","inv.c.last":"Terakhir terjual","inv.c.age":"Tertua (hari)",
+    "inv.c.transit":"Dalam perjalanan","inv.c.order":"Dipesan","inv.c.status":"Status",
+    "inv.c.batch":"Batch","inv.c.arrived":"Tiba","inv.c.qty":"Jml masuk","inv.c.left":"Sisa","inv.c.unit":"Biaya / unit","inv.c.inv":"Invoice",
+    "inv.c.kind":"Tahap","inv.c.ref":"Referensi","inv.c.supplier":"Pemasok","inv.c.date":"Tanggal","inv.c.units":"Unit",
+    "inv.s.ok":"Aman","inv.s.out":"Habis","inv.s.low":"Menipis","inv.s.dead":"Tidak bergerak","inv.s.slow":"Kebanyakan","inv.s.none":"Tidak ada stok",
+    "inv.p.transit":"🚚 Dalam perjalanan","inv.p.order":"⏳ Dipesan","inv.p.conv":"konversi",
+    "inv.h.cover":"Di tangan ÷ unit terjual per hari di periode ini","inv.h.mgn":"(Harga jual − biaya mendarat rata-rata) ÷ harga jual",
+    "inv.h.st":"Terjual ÷ (awal + masuk)",
+    "inv.note":"Stok dihitung ulang untuk tanggal mana pun dari tanggal tiba batch dan pengambilan FIFO, jadi periode lalu menunjukkan stok saat itu. Nilai memakai biaya mendarat batch hari ini. Dalam perjalanan dan dipesan adalah kondisi saat ini. Pre-order yang tanggal jualnya sebelum batch tiba dihitung dari tanggal jual.",
+    "inv.loading":"Memuat persediaan…","inv.err":"Gagal memuat persediaan — {m}"
+  }
+});
+
+var DEAD_DAYS=60, LOW_DAYS=14, SLOW_DAYS=180;
+var AGE_COL=["#22c55e","#84cc16","#f59e0b","#f97316","#ef4444"];
+var INV={ p:null, pFor:null, err:"" };
+function t(k,v){ return RP.t(k,v); }
+function dd(n){ return Math.round(n*10)/10; }
+
+// One fetch per RP._cache generation: RP.refresh() without cache (reload,
+// after an edit) swaps RP._cache, so inventory refetches with everything else.
+function load(){
+  var c=RP._cache||(RP._cache={});
+  if(c.__inv) return c.__inv;
+  if(INV.p && INV.pFor===c) return null;
+  INV.pFor=c; INV.err="";
+  INV.p=MG.api("report.inventory",{}).then(function(d){
+    c.__inv=prep(d); INV.p=null; RP.renderSection("inventory");
+  }).catch(function(e){ INV.p=null; INV.err=(e&&e.message)||"error"; RP.renderSection("inventory"); });
+  return null;
+}
+// Index once per fetch: product lookup, draws per batch (date-sorted), and the
+// effective arrival date (a presale dated before arrival counts from the sale).
+function prep(d){
+  var P={}, by={};
+  arr(d.products).forEach(function(p){ P[p.id]=p; });
+  arr(d.draws).forEach(function(x){ (by[x.line]||(by[x.line]=[])).push(x); });
+  arr(d.batches).forEach(function(b){
+    b.draws=(by[b.id]||[]).sort(function(a,c){ return a.date<c.date?-1:(a.date>c.date?1:0); });
+    b.eff=b.arrived;
+    if(b.eff && b.draws.length && b.draws[0].date && b.draws[0].date<b.eff) b.eff=b.draws[0].date;
+  });
+  d.P=P; return d;
+}
+
+function prodOk(pid,D){
+  var f=RP.filters, p=D.P[pid]||{};
+  if(f.product_id!=null && String(f.product_id)!==String(pid)) return false;
+  if(f.types.length && f.types.indexOf(p.type_name||"")<0) return false;
+  if(f.languages.length && f.languages.indexOf(p.language||"")<0) return false;
+  return true;
+}
+
+// Rebuild the period. Values: stock at today's landed cost per batch; sold at
+// the locked FIFO COGS (= P&L), the gap shown as a revaluation line.
+function calc(D,from,to){
+  var end=to<D.today?to:D.today, open=rpAdd(from,-1), days=Math.max(1,rpDiff(from,end)+1), G={}, B=[];
+  var T={ ou:0,ov:0, iu:0,iv:0, ciu:0,civ:0, su:0,sv:0, cou:0,cov:0, adj:0, cu:0,cv:0, tu:0,tv:0, onu:0,onv:0, bu:0,bv:0, binv:{}, age:[0,0,0,0,0] };
+  function g(pid){
+    var x=G[pid]; if(x) return x;
+    var p=D.P[pid]||{};
+    return (G[pid]={ pid:pid, name:p.name||("#"+pid), language:p.language||"", type:p.type_name||"", price:p.sale_price_idr,
+      ou:0,iu:0,su:0,cu:0,cv:0,tu:0,onu:0,last:"",oldest:null });
+  }
+  D.batches.forEach(function(b){
+    if(!prodOk(b.product_id,D)) return;
+    var x=g(b.product_id), u=+b.unit||0;
+    if(!b.eff){ x.tu+=b.qty; T.tu+=b.qty; T.tv+=b.qty*u; return; }
+    var dOpen=0, dEnd=0;
+    b.draws.forEach(function(w){
+      if(!w.date) return;
+      if(w.date<=open) dOpen+=w.qty;
+      if(w.date<=end) dEnd+=w.qty;
+      if(w.kind==="sale" && w.date<=end && w.date>x.last) x.last=w.date;
+      if(w.date<from || w.date>end) return;
+      if(w.kind==="sale"){ x.su+=w.qty; T.su+=w.qty; T.sv+=w.qty*w.cogs; }
+      else { T.cou+=w.qty; T.cov+=w.qty*w.cogs; }
+      T.adj+=w.qty*(w.cogs-u);
+    });
+    var ou=(b.eff<=open?b.qty:0)-dOpen, cu=(b.eff<=end?b.qty:0)-dEnd;
+    x.ou+=ou; T.ou+=ou; T.ov+=ou*u;
+    if(b.eff>=from && b.eff<=end){
+      x.iu+=b.qty;
+      if(b.conversion){ T.ciu+=b.qty; T.civ+=b.qty*u; } else { T.iu+=b.qty; T.iv+=b.qty*u; }
+    }
+    x.cu+=cu; x.cv+=cu*u; T.cu+=cu; T.cv+=cu*u;
+    if(cu>0){
+      var age=rpDiff(b.eff,end);
+      if(x.oldest==null || age>x.oldest) x.oldest=age;
+      T.age[age<=30?0:(age<=60?1:(age<=90?2:(age<=180?3:4)))]+=cu*u;
+      B.push({ b:b, x:x, left:cu, age:age, value:cu*u });
+    }
+  });
+  arr(D.on_order).forEach(function(o){
+    if(!prodOk(o.product_id,D)) return;
+    g(o.product_id).onu+=o.qty; T.onu+=o.qty; T.onv+=o.qty*(+o.unit||0);
+  });
+  arr(D.purchases).forEach(function(p){
+    if(!p.date || p.date<from || p.date>to || !prodOk(p.product_id,D)) return;
+    T.bu+=p.qty; T.bv+=p.value; T.binv[p.invoice_id]=1;
+  });
+  var rows=Object.keys(G).map(function(k){ return G[k]; }).filter(function(x){ return x.ou||x.iu||x.su||x.cu||x.tu||x.onu; });
+  rows.forEach(function(x){
+    x.avg=x.cu>0?x.cv/x.cu:null;
+    x.mgn=(x.price>0 && x.avg!=null)?(x.price-x.avg)/x.price*100:null;
+    var avail=Math.max(0,x.ou)+x.iu;
+    x.st=avail>0?x.su/avail*100:null;
+    x.rate=x.su/days;
+    x.cover=x.rate>0?x.cu/x.rate:null;
+    x.idle=x.last?rpDiff(x.last,end):null;
+    x.status=x.cu<=0?(x.su>0&&!x.tu&&!x.onu?"out":"none")
+      :((x.idle==null||x.idle>=DEAD_DAYS)?"dead":((x.cover!=null&&x.cover<LOW_DAYS&&!x.tu&&!x.onu)?"low":((x.cover!=null&&x.cover>SLOW_DAYS)?"slow":"ok")));
+  });
+  T.days=days; T.end=end;
+  T.avgInv=(T.ov+T.cv)/2;
+  T.turn=T.avgInv>0?T.sv/T.avgInv:null;
+  T.dio=T.sv>0?T.avgInv/(T.sv/days):null;
+  var avail=Math.max(0,T.ou)+T.iu+T.ciu;
+  T.st=avail>0?T.su/avail*100:null; T.avail=avail;
+  T.dead=rows.filter(function(x){ return x.status==="dead"; });
+  T.deadV=RP.sum(T.dead,function(x){ return x.cv; });
+  return { T:T, rows:rows, batches:B };
+}
+
+function kpi(k,v,d,s,tip){
+  return '<div class="rp-kpi" title="'+esc(tip||t(k+".tip"))+'"><div class="rp-kl"><span>'+esc(t(k))+'</span>'+(d||"")+'</div>'
+    +'<div class="rp-kv num">'+v+'</div><div class="rp-ks">'+esc(s)+'</div></div>';
+}
+function statusHtml(s){
+  var cls={ out:"out", low:"low", dead:"dead", slow:"dead" }[s];
+  return cls?'<span class="rpi-tag '+cls+'">'+esc(t("inv.s."+s))+'</span>':'<span class="rpt-dim">'+esc(t("inv.s."+s))+'</span>';
+}
+
+RP.addSection({ id:"inventory", order:62, navKey:"nav.inv", render:function(c){
+  var D=load();
+  if(!D){
+    c.innerHTML=RP.secHead("inv.h")+(INV.err
+      ?'<div class="rp-card rp-err">'+esc(t("inv.err",{ m:INV.err }))+'</div>'
+      :'<div class="rp-card">'+MG.skel(6)+'</div>');
+    return;
+  }
+  var st=RP.st, R=calc(D,st.from,st.to), T=R.T, cmp=RP.hasCmp(), P=cmp?calc(D,st.prevFrom,st.prevTo).T:null;
+  var K=[
+    kpi("inv.k.value",money(T.cv),cmp?RP.delta(T.cv,P.cv):"",t("inv.k.value.s",{ u:num(T.cu) })),
+    kpi("inv.k.buy",money(T.bv),cmp?RP.delta(T.bv,P.bv,true):"",t("inv.k.buy.s",{ u:num(T.bu), n:num(Object.keys(T.binv).length) })),
+    kpi("inv.k.in",money(T.iv+T.civ),cmp?RP.delta(T.iv+T.civ,P.iv+P.civ):"",t("inv.k.in.s",{ u:num(T.iu+T.ciu) })),
+    kpi("inv.k.turn",T.turn==null?"—":dd(T.turn).toLocaleString("id-ID")+t("inv.x"),cmp?RP.delta(T.turn,P.turn):"",t("inv.k.turn.s")),
+    kpi("inv.k.dio",T.dio==null?"—":esc(t("inv.days",{ n:num(Math.round(T.dio)) })),cmp?RP.delta(T.dio,P.dio,true):"",t("inv.k.dio.s")),
+    kpi("inv.k.st",T.st==null?"—":pct(T.st),cmp?RP.delta(T.st,P.st):"",t("inv.k.st.s",{ s:num(T.su), a:num(T.avail) })),
+    kpi("inv.k.transit",money(T.tv),"",t("inv.k.transit.s",{ u:num(T.tu) })),
+    kpi("inv.k.order",money(T.onv),"",t("inv.k.order.s",{ u:num(T.onu) })),
+    kpi("inv.k.dead",money(T.deadV),"",t("inv.k.dead.s",{ n:num(T.dead.length), d:DEAD_DAYS }),t("inv.k.dead.tip",{ d:DEAD_DAYS }))
+  ];
+
+  var roll=[
+    { k:"inv.r.open", op:"", u:T.ou, v:T.ov },
+    { k:"inv.r.in", op:"+", u:T.iu, v:T.iv },
+    T.ciu?{ k:"inv.r.cin", op:"+", u:T.ciu, v:T.civ }:null,
+    { k:"inv.r.sold", op:"−", u:T.su, v:T.sv },
+    T.cou?{ k:"inv.r.cout", op:"−", u:T.cou, v:T.cov }:null,
+    Math.abs(T.adj)>=1?{ k:"inv.r.adj", op:T.adj>=0?"+":"−", u:null, v:Math.abs(T.adj), adj:true }:null,
+    { k:"inv.r.close", op:"=", u:T.cu, v:T.cv, tot:true }
+  ].filter(Boolean);
+  var rollH='<div class="tscroll"><table class="rpi-roll"><thead><tr><th>'+esc(t("inv.r.line"))+'</th><th>'+esc(t("inv.r.units"))+'</th><th>'+esc(t("inv.r.value"))+'</th></tr></thead><tbody>'
+    +roll.map(function(r){
+      return '<tr class="'+(r.tot?"tot":"")+(r.adj?" adj":"")+'"><td><span class="op">'+r.op+'</span>'+esc(t(r.k))+'</td>'
+        +'<td class="num">'+(r.u==null?"":num(r.u))+'</td><td class="num">'+money(r.v)+'</td></tr>';
+    }).join("")+'</tbody></table></div>'
+    +(Math.abs(T.adj)>=1?'<div class="rpi-note">ⓘ '+esc(t("inv.r.adj.n"))+'</div>':'');
+
+  var ageItems=T.age.map(function(v,i){ return { label:t("inv.age.b"+i), v:v, color:AGE_COL[i] }; });
+  var ageAny=T.cv>0;
+
+  var tg=RP.group(R.rows.filter(function(x){ return x.cv>0; }),function(x){ return x.type||""; });
+  var tyItems=RP.topN(Object.keys(tg).map(function(k){ return { label:k||t("mix.unknown"), name:k||t("mix.unknown"), v:RP.sum(tg[k],function(x){ return x.cv; }), n:tg[k].length, dv:k }; }),8);
+  tyItems.forEach(function(x,i){ x.color=x.dv==null?"#475569":RP.PAL[i%RP.PAL.length]; });
+
+  var att=R.rows.filter(function(x){ return x.status!=="ok"&&x.status!=="none"; })
+    .sort(function(a,b){ var o={ out:0, low:1, dead:2, slow:3 }; return (o[a.status]-o[b.status])||(b.cv-a.cv)||(b.su-a.su); });
+  var attH=att.length?'<div class="rpi-att">'+att.map(function(x){
+    var m=x.status==="out"?t("inv.att.outm",{ s:num(x.su) })
+      :(x.status==="low"?t("inv.att.lowm",{ u:num(x.cu), d:num(Math.round(x.cover)) })
+      :(x.status==="slow"?t("inv.att.slowm",{ u:num(x.cu), d:num(Math.round(x.cover)) })
+      :t("inv.att.deadm",{ u:num(x.cu), l:x.last?RP.fmtDate(x.last):t("inv.att.never") })));
+    return '<div class="it"><span class="rpi-tag '+(x.status==="slow"?"dead":x.status)+'">'+esc(t("inv.att."+x.status))+'</span>'
+      +'<span class="w"><b>'+esc(x.name)+'</b> <span class="m">'+esc([x.language,x.type].filter(Boolean).join(" · "))+'</span><div class="m">'+esc(m)+'</div></span>'
+      +'<span class="v num">'+(x.cv?money(x.cv):"")+'</span></div>';
+  }).join("")+'</div>':RP.emptyHtml(t("inv.att.none"));
+
+  c.innerHTML=RP.secHead("inv.h")
+    +'<div class="rp-kpis rpi-kpis" style="margin-bottom:14px;">'+K.join("")+'</div>'
+    +'<div class="rp-grid2">'
+      +RP.card(t("inv.roll"),t("inv.roll.sub"),"invroll",rollH)
+      +RP.card(t("inv.age"),t("inv.age.sub"),"invage",ageAny?'<div class="rp-chart" id="rpiAge" style="height:240px;"></div>':RP.emptyHtml())
+    +'</div><div class="rp-grid2">'
+      +RP.card(t("inv.type"),t("inv.type.sub"),"invtype",tyItems.length?RP.donut("invtype",tyItems,"type",T.cv):RP.emptyHtml())
+      +RP.card(t("inv.att"),t("inv.att.sub"),"invatt",attH)
+    +'</div>'
+    +'<div class="rp-card">'+RP.cardHead(t("inv.tabs"),t("inv.tabs.sub"))+'<div id="rpiTabs"></div><div class="rpi-note">ⓘ '+esc(t("inv.note"))+'</div></div>';
+
+  if(ageAny) RP.chart("invage",el("rpiAge"),{
+    type:"bar",
+    data:{ labels:ageItems.map(function(x){ return x.label; }),
+      datasets:[{ data:ageItems.map(function(x){ return x.v; }), backgroundColor:ageItems.map(function(x){ return x.color; }), borderRadius:6, maxBarThickness:46 }] },
+    options:{ plugins:{ legend:{ display:false },
+      tooltip:{ callbacks:{ label:function(cx){ return " "+RP.fmtV(cx.raw)+" · "+(T.cv?pct(cx.raw/T.cv*100):"—"); } } } },
+      scales:{ y:RP.axis(), x:{ grid:{ display:false } } } }
+  }); else RP.chart("invage",null);
+  if(tyItems.length) RP.donutChart("invtype",tyItems,"type",T.cv); else RP.chart("invtype",null);
+
+  RP._csv.invroll=function(){ RP.csv(RP.fname("stock-movement"),[t("inv.r.line"),t("inv.r.units"),t("inv.r.value")],
+    roll.map(function(r){ return [(r.op?r.op+" ":"")+t(r.k), r.u, r.op==="−"?-r.v:r.v]; })); };
+  RP._csv.invage=function(){ RP.csv(RP.fname("stock-age"),[t("inv.age"),t("inv.r.value"),"%"],
+    ageItems.map(function(x){ return [x.label,x.v,T.cv?x.v/T.cv*100:null]; })); };
+  RP._csv.invtype=function(){ RP.csv(RP.fname("stock-by-type"),[t("inv.c.type"),t("inv.r.value"),"%"],
+    Object.keys(tg).map(function(k){ var v=RP.sum(tg[k],function(x){ return x.cv; }); return [k||t("mix.unknown"),v,T.cv?v/T.cv*100:null]; })); };
+  RP._csv.invatt=function(){ RP.csv(RP.fname("stock-attention"),[t("inv.c.status"),t("inv.c.product"),t("inv.c.lang"),t("inv.c.type"),t("inv.c.close"),t("inv.c.value"),t("inv.c.sold"),t("inv.c.cover"),t("inv.c.last")],
+    att.map(function(x){ return [t("inv.s."+x.status),x.name,x.language,x.type,x.cu,x.cv,x.su,x.cover==null?null:Math.round(x.cover),x.last]; })); };
+
+  var stLabel=function(s){ return t("inv.s."+s); };
+  RP.tabs({ id:"inv", el:el("rpiTabs"), tabs:[
+    { key:"prod", labelKey:"inv.t.prod", render:function(b){
+      RP.table({ id:"inv-prod", el:b, csvName:"inventory_by_product", defaultSort:{ key:"value", dir:"desc" }, rows:R.rows,
+        actions:[{ icon:"🔍", titleKey:"rt.drill", run:function(x){ RP.drill({ product_id:x.pid }); } }],
+        columns:[
+          { key:"name", labelKey:"inv.c.product", type:"text", get:function(x){ return x.name; },
+            render:function(x){ return '<span class="rpt-ell" title="'+esc(x.name)+'">'+esc(x.name)+'</span>'; } },
+          { key:"lang", labelKey:"inv.c.lang", type:"text", filter:"multi", get:function(x){ return x.language; } },
+          { key:"type", labelKey:"inv.c.type", type:"text", filter:"multi", get:function(x){ return x.type; } },
+          { key:"status", labelKey:"inv.c.status", type:"chip", filter:"multi", get:function(x){ return x.status; }, flabel:stLabel,
+            csv:function(x){ return stLabel(x.status); }, render:function(x){ return statusHtml(x.status); } },
+          { key:"open", labelKey:"inv.c.open", type:"num", get:function(x){ return x.ou; } },
+          { key:"in", labelKey:"inv.c.in", type:"num", get:function(x){ return x.iu; } },
+          { key:"sold", labelKey:"inv.c.sold", type:"num", filter:"range", get:function(x){ return x.su; } },
+          { key:"close", labelKey:"inv.c.close", type:"num", filter:"range", get:function(x){ return x.cu; } },
+          { key:"value", labelKey:"inv.c.value", type:"money", filter:"range", get:function(x){ return x.cv; } },
+          { key:"avg", labelKey:"inv.c.avg", type:"money", total:false, get:function(x){ return x.avg; } },
+          { key:"price", labelKey:"inv.c.price", type:"money", total:false, get:function(x){ return x.price; } },
+          { key:"mgn", labelKey:"inv.c.mgn", type:"pct", hintKey:"inv.h.mgn", total:false, get:function(x){ return x.mgn; },
+            render:function(x){ return x.mgn==null?'<span class="rpt-dim">—</span>':'<span class="'+(x.mgn<0?"neg":"")+'">'+pct(x.mgn)+'</span>'; } },
+          { key:"st", labelKey:"inv.c.st", type:"pct", hintKey:"inv.h.st", total:false, get:function(x){ return x.st; } },
+          { key:"rate", labelKey:"inv.c.rate", type:"num", total:false, get:function(x){ return x.rate?dd(x.rate):null; },
+            render:function(x){ return x.rate?'<span class="num">'+dd(x.rate).toLocaleString("id-ID")+'</span>':'<span class="rpt-dim">—</span>'; } },
+          { key:"cover", labelKey:"inv.c.cover", type:"num", hintKey:"inv.h.cover", filter:"range", total:false, get:function(x){ return x.cover==null?null:Math.round(x.cover); } },
+          { key:"last", labelKey:"inv.c.last", type:"date", filter:"range", get:function(x){ return x.last||null; } },
+          { key:"age", labelKey:"inv.c.age", type:"num", filter:"range", total:false, get:function(x){ return x.oldest; } },
+          { key:"transit", labelKey:"inv.c.transit", type:"num", get:function(x){ return x.tu; } },
+          { key:"order", labelKey:"inv.c.order", type:"num", get:function(x){ return x.onu; } }
+        ] });
+    }},
+    { key:"batch", labelKey:"inv.t.batch", render:function(b){
+      RP.table({ id:"inv-batch", el:b, csvName:"inventory_batches", defaultSort:{ key:"arrived", dir:"asc" }, rows:R.batches,
+        columns:[
+          { key:"batch", labelKey:"inv.c.batch", type:"text", get:function(r){ return "#"+r.b.shipment_id+(r.b.label?" "+r.b.label:""); },
+            render:function(r){ return '<span class="rpt-ell" title="'+esc(r.b.label||"")+'">🚚 #'+esc(r.b.shipment_id)+(r.b.label?' <span class="rpt-dim">'+esc(r.b.label)+'</span>':'')
+              +(r.b.conversion?' <span class="mg-chip">'+esc(t("inv.p.conv"))+'</span>':'')+'</span>'; } },
+          { key:"name", labelKey:"inv.c.product", type:"text", get:function(r){ return r.x.name; } },
+          { key:"type", labelKey:"inv.c.type", type:"text", filter:"multi", get:function(r){ return r.x.type; } },
+          { key:"inv", labelKey:"inv.c.inv", type:"text", get:function(r){ return r.b.invoice_id?"#"+r.b.invoice_id:""; } },
+          { key:"arrived", labelKey:"inv.c.arrived", type:"date", filter:"range", get:function(r){ return r.b.eff; } },
+          { key:"age", labelKey:"inv.c.age", type:"num", filter:"range", total:false, get:function(r){ return r.age; } },
+          { key:"qty", labelKey:"inv.c.qty", type:"num", get:function(r){ return r.b.qty; } },
+          { key:"left", labelKey:"inv.c.left", type:"num", get:function(r){ return r.left; } },
+          { key:"unit", labelKey:"inv.c.unit", type:"money", total:false, get:function(r){ return +r.b.unit||0; } },
+          { key:"value", labelKey:"inv.c.value", type:"money", filter:"range", get:function(r){ return r.value; } }
+        ] });
+    }},
+    { key:"pipe", labelKey:"inv.t.pipe", render:function(b){
+      var rows=[];
+      D.batches.forEach(function(x){ if(!x.eff && prodOk(x.product_id,D)) rows.push({ kind:"transit", ref:"🚚 #"+x.shipment_id+(x.label?" "+x.label:""), sup:"",
+        date:x.shipment_date, pid:x.product_id, qty:x.qty, value:x.qty*(+x.unit||0) }); });
+      arr(D.on_order).forEach(function(o){ if(prodOk(o.product_id,D)) rows.push({ kind:"order", ref:"🧾 #"+o.invoice_id, sup:o.supplier||"",
+        date:o.invoice_date, pid:o.product_id, qty:o.qty, value:o.qty*(+o.unit||0) }); });
+      RP.table({ id:"inv-pipe", el:b, csvName:"inventory_incoming", defaultSort:{ key:"date", dir:"desc" }, rows:rows, emptyKey:"rt.empty",
+        columns:[
+          { key:"kind", labelKey:"inv.c.kind", type:"chip", filter:"multi", get:function(r){ return r.kind; },
+            flabel:function(v){ return t("inv.p."+v); }, csv:function(r){ return t("inv.p."+r.kind); },
+            render:function(r){ return '<span class="mg-chip">'+esc(t("inv.p."+r.kind))+'</span>'; } },
+          { key:"ref", labelKey:"inv.c.ref", type:"text", get:function(r){ return r.ref; } },
+          { key:"sup", labelKey:"inv.c.supplier", type:"text", filter:"multi", get:function(r){ return r.sup; } },
+          { key:"date", labelKey:"inv.c.date", type:"date", get:function(r){ return r.date; } },
+          { key:"name", labelKey:"inv.c.product", type:"text", get:function(r){ return (D.P[r.pid]||{}).name||("#"+r.pid); } },
+          { key:"units", labelKey:"inv.c.units", type:"num", get:function(r){ return r.qty; } },
+          { key:"value", labelKey:"inv.c.value", type:"money", get:function(r){ return r.value; } }
+        ] });
+    }}
+  ]});
+}});
 })();
 
 
