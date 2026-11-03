@@ -26,7 +26,7 @@
   :root{color-scheme:dark;}   /* native scrollbars, selects, date pickers render dark */
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
   html{scrollbar-color:#2a3950 transparent;scrollbar-width:thin;}
-  html,body{margin:0;padding:0;max-width:100%;overflow-x:hidden;}
+  html,body{margin:0;padding:0;max-width:100%;overflow-x:hidden;overflow-x:clip;}
   /* themed scrollbars everywhere (tables, modals, pickers) */
   ::-webkit-scrollbar{width:10px;height:10px;}
   ::-webkit-scrollbar-track{background:transparent;}
@@ -243,6 +243,28 @@
 
   /* Tables */
   .tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  /* Floating ◀ ▶ buttons replace the horizontal scrollbar on wide tables
+     (see hsScan). Rails span the table's height; the button is sticky at
+     mid-viewport so it stays reachable on long tables. */
+  .hs-wrap{position:relative;}
+  /* html's (inherited) scrollbar-color makes Chrome ignore ::-webkit-scrollbar,
+     so a horizontal-only hide isn't possible: bars are hidden outright. Report
+     tables still scroll vertically by wheel/trackpad/touch. */
+  .hs-wrap>.hs-x{scrollbar-width:none;}
+  .hs-wrap>.hs-x::-webkit-scrollbar:horizontal{height:0;}
+  .hs-rail{position:absolute;top:0;bottom:0;width:0;z-index:6;pointer-events:none;}
+  .hs-rail.l{left:0;} .hs-rail.r{right:0;}
+  .hs-btn{position:sticky;top:calc(50vh - 21px);width:42px;height:42px;border-radius:50%;
+    border:1px solid rgba(76,154,255,.55);background:rgba(18,27,41,.94);color:var(--acc);font-size:24px;font-weight:700;line-height:1;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;
+    box-shadow:0 6px 18px rgba(0,0,0,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+    opacity:0;visibility:hidden;transition:opacity .18s ease,visibility .18s,background .15s,border-color .15s;}
+  .hs-rail.l .hs-btn{margin-left:8px;} .hs-rail.r .hs-btn{margin-left:-54px;}
+  .hs-rail.short .hs-btn{position:absolute;top:50%;transform:translateY(-50%);}
+  .hs-rail.on .hs-btn{opacity:1;visibility:visible;}
+  .hs-btn:hover{background:var(--acc);border-color:var(--acc);color:#fff;}
+  .hs-btn:focus-visible{outline:2px solid var(--acc);outline-offset:2px;}
+  @media print{.hs-rail{display:none;}}
   table{width:100%;border-collapse:collapse;font-size:13px;min-width:480px;}
   th,td{padding:9px 10px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--border);}
   th:first-child,td:first-child{text-align:left;}
@@ -941,6 +963,173 @@
     .rpt-count{margin-left:0;order:5;width:100%;}
     .rpt-scroll{max-height:68vh;}
   }
+
+
+  /* ===== Control Room ===== */
+  .wrap:has(#sec-control.active){max-width:1440px;}
+  html:has(#sec-control.active),body:has(#sec-control.active){overflow-x:clip;}
+  .cr [hidden]{display:none !important;}
+  .cr-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 2px 14px;}
+  .cr-head h2{margin:0;font-size:20px;font-weight:750;letter-spacing:.2px;}
+  .cr-head .sub{font-size:12.5px;color:var(--muted);margin-top:3px;max-width:620px;}
+  .cr-hact{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+  .cr-hact .mg-btn.on{border-color:var(--acc);color:var(--acc);}
+  .cr-uw{display:inline-block;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:bottom;color:var(--muted);font-weight:600;}
+  .cr-n{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:var(--acc);color:#06101e;font-size:11px;line-height:18px;text-align:center;}
+  .cr-lang{padding:2px;}
+  .cr-lang button{height:28px;padding:0 10px;font-size:12px;}
+  .cr-ents{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 0 12px;padding:1px;}
+  .cr-ents::-webkit-scrollbar{display:none;}
+  .cr-ent{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:0 14px;border-radius:12px;
+    border:1px solid var(--border);background:var(--surface);color:var(--muted);font-size:13.5px;font-weight:650;cursor:pointer;
+    transition:border-color .15s,color .15s,background .15s;}
+  .cr-ent:hover{color:var(--text);}
+  .cr-ent.on{color:var(--text);border-color:var(--acc);background:rgba(76,154,255,.12);}
+  .cr-ent .n{font-size:11px;color:var(--muted);font-weight:700;background:var(--panel-b);border-radius:999px;padding:1px 7px;font-variant-numeric:tabular-nums;}
+  .cr-card{padding:14px;}
+  .cr-fbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .cr-fbar .inp,.cr-fbar .dd{min-height:34px;padding:6px 10px;font-size:13px;width:auto;max-width:100%;}
+  .cr-fbar .dd{padding-right:30px;max-width:230px;}
+  .cr-q{flex:1 1 200px;min-width:150px;}
+  .cr-fbar .cr-d{width:140px;}
+  .cr-cust{width:150px;}
+  .cr-dash{color:var(--muted);}
+  .cr-pills{display:inline-flex;gap:4px;flex-wrap:wrap;}
+  .cr-pill{min-height:30px;padding:3px 10px;border-radius:999px;border:1px solid var(--border);background:var(--panel-b);color:var(--muted);
+    font-size:12px;font-weight:650;cursor:pointer;white-space:nowrap;}
+  .cr-pill:hover{color:var(--text);}
+  .cr-pill.on{border-color:var(--acc);color:var(--acc);background:rgba(76,154,255,.12);}
+  .cr-sp{flex:1 1 auto;}
+  .cr-link{background:none;border:none;color:var(--acc);font-size:12.5px;font-weight:600;cursor:pointer;padding:4px 6px;border-radius:6px;}
+  .cr-link:hover{text-decoration:underline;}
+  .cr-sum{display:flex;flex-wrap:wrap;gap:4px 18px;margin:12px 2px 10px;font-size:12.5px;color:var(--muted);align-items:baseline;}
+  .cr-sum b{color:var(--text);font-weight:700;font-size:13.5px;}
+  .cr-mut{color:var(--muted);}
+  .cr-sm{font-size:11px;}
+  .cr-warn{color:var(--amber);font-size:12.5px;}
+
+  /* bulk bar: sticky on its own container (see manage.ts #mgSaleBulk note) */
+  #crBulk{position:sticky;top:88px;z-index:25;}
+  .cr-bulk{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 10px;margin:0 0 10px;border:1px solid var(--acc);
+    border-radius:12px;background:rgba(12,20,32,.96);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
+    box-shadow:0 12px 32px rgba(0,0,0,.5);animation:fadein .15s ease;}
+  .cr-bulk .bn{font-weight:750;font-size:13px;margin-right:2px;white-space:nowrap;}
+  .cr-bulk .sep{width:1px;align-self:stretch;background:var(--border);margin:2px 3px;}
+  .cr-bulk .lbl{font-size:10.5px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px;}
+  .cr-bulk .mg-btn.sm{min-height:30px;}
+  .cr-bulk .danger{color:var(--red);}
+  .cr-prog{flex:1 1 160px;height:6px;border-radius:4px;background:var(--panel-b);overflow:hidden;min-width:100px;}
+  .cr-prog i{display:block;height:100%;background:var(--acc);transition:width .2s;}
+
+  /* grid */
+  .cr-scroll{max-height:min(72vh,860px);overflow:auto;border:1px solid var(--border);border-radius:var(--radius-ctl);-webkit-overflow-scrolling:touch;}
+  .hs-wrap>.cr-scroll.hs-x{scrollbar-width:thin;}
+  .cr-t{font-size:12.8px;}
+  .cr-t thead th{padding:0;z-index:3;background:var(--surface);box-shadow:inset 0 -1px 0 var(--border);}
+  .cr-th{display:flex;align-items:center;gap:4px;width:100%;padding:9px 10px;border:none;background:none;color:inherit;font:inherit;
+    text-transform:inherit;letter-spacing:inherit;cursor:pointer;white-space:nowrap;}
+  th.r .cr-th{justify-content:flex-end;}
+  .cr-th .ar{font-size:9px;opacity:.35;}
+  .cr-th:hover,.cr-th.on{color:var(--text);}
+  .cr-th.on .ar{opacity:1;color:var(--acc);}
+  .cr-t td{padding:0;}
+  .cr-t td.l,.cr-t th.l{text-align:left;}
+  .cr-t td.r,.cr-t th.r{text-align:right;}
+  .cr-c{position:relative;outline:none;}
+  .cr-t td.cr-c{padding:7px 10px;}
+  .cr-c.ed{cursor:pointer;}
+  .cr-c.ed:hover{background:rgba(76,154,255,.07);box-shadow:inset 0 0 0 1px rgba(76,154,255,.35);}
+  .cr-c:focus-visible,.cr-c:focus{box-shadow:inset 0 0 0 2px var(--acc);}
+  .cr-c.wide{max-width:260px;overflow:hidden;text-overflow:ellipsis;}
+  .cr-t td.cr-c.editing,.cr-c.editing{padding:2px 4px;background:rgba(76,154,255,.08);max-width:none;overflow:visible;}
+  .cr-in{width:100%;min-width:96px;min-height:30px;padding:4px 8px;border-radius:7px;border:1px solid var(--acc);background:var(--panel-b);
+    color:var(--text);font:inherit;outline:none;box-shadow:0 0 0 3px rgba(76,154,255,.18);}
+  .cr-in.r{text-align:right;}
+  .cr-c.saving{opacity:.7;}
+  .cr-c.saving::after{content:"";position:absolute;right:3px;top:50%;width:9px;height:9px;margin-top:-6px;border:2px solid var(--border);
+    border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;}
+  .cr-c.ok{animation:crOk 1.4s ease;}
+  .cr-c.ok::after{content:"✓";position:absolute;right:3px;top:2px;font-size:10px;font-weight:800;color:var(--green);animation:crOkT 1.4s ease forwards;}
+  @keyframes crOk{0%{background:rgba(52,211,153,.28);}100%{background:transparent;}}
+  @keyframes crOkT{0%,70%{opacity:1;}100%{opacity:0;}}
+  .cr-t .cr-cb{width:36px;text-align:center;padding:0 4px;}
+  .cr-t .cr-xc{width:28px;padding:0;}
+  .cr-xb{border:none;background:transparent;color:var(--muted);cursor:pointer;width:28px;height:30px;font-size:11px;border-radius:6px;transition:transform .15s,color .15s;}
+  .cr-xb:hover{color:var(--text);}
+  tr.open .cr-xb{transform:rotate(90deg);color:var(--acc);}
+  tr.cr-r.sel td{background:rgba(76,154,255,.09);}
+  tr.cr-r.open td{background:rgba(76,154,255,.05);border-bottom-color:transparent;}
+  tr.cr-r.cr-dim td.cr-c{opacity:.55;}
+  tr.cr-xr:hover{background:none;}
+  tr.cr-xr>td{padding:0;background:#0d1520;text-align:left;white-space:normal;}
+  .cr-prod{display:inline-block;max-width:250px;overflow:hidden;text-overflow:ellipsis;vertical-align:bottom;}
+  .cr-more{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:10px;font-size:12px;color:var(--muted);flex-wrap:wrap;}
+  .cr-more:empty{display:none;}
+  .cr-hint{font-size:11.5px;color:var(--muted);margin-top:9px;line-height:1.5;}
+
+  /* expanded row */
+  .cr-xbox{position:sticky;left:0;box-sizing:border-box;padding:14px;display:grid;gap:12px;
+    grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);white-space:normal;text-align:left;}
+  .cr-xbox .full{grid-column:1/-1;}
+  .cr-panel{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:12px;min-width:0;}
+  .cr-ph{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:10.5px;font-weight:800;color:var(--muted);
+    text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px;}
+  .cr-kv{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:2px 12px;align-items:center;font-size:13px;}
+  .cr-kv .k{color:var(--muted);font-size:12px;}
+  .cr-kv .cr-c{padding:5px 8px;border-radius:7px;min-height:30px;display:flex;align-items:center;gap:6px;white-space:normal;word-break:break-word;}
+  .cr-kv .cr-c.r{justify-content:flex-start;}
+  .cr-stats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+  .cr-stat{flex:1 1 110px;background:var(--panel-b);border:1px solid var(--border);border-radius:10px;padding:8px 10px;min-width:0;}
+  .cr-stat>span{display:block;font-size:10.5px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.4px;}
+  .cr-stat b{display:block;font-size:15px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cr-subwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .cr-sub{width:100%;min-width:0;font-size:12.5px;}
+  .cr-sub th{position:static;padding:6px 8px;}
+  .cr-sub td{padding:6px 8px;}
+  .cr-sub td.cr-c{padding:6px 8px;}
+  .cr-note{font-size:11.5px;color:var(--muted);margin-top:8px;line-height:1.5;}
+  .cr-pays{margin-top:6px;font-size:12.5px;}
+  .cr-pays div{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px solid var(--border);}
+  .cr-pays div:last-child{border-bottom:none;}
+
+  /* popover menu / quick input */
+  .cr-pop{position:fixed;z-index:260;min-width:200px;max-width:min(320px,calc(100vw - 16px));background:#0c1420;border:1px solid var(--border);
+    border-radius:12px;box-shadow:0 18px 44px rgba(0,0,0,.6);padding:6px;animation:fadein .12s ease;outline:none;}
+  .cr-pop .inp{min-height:34px;padding:6px 10px;font-size:13px;}
+  .cr-pop>.inp{margin-bottom:6px;}
+  .cr-opts{position:relative;max-height:290px;overflow:auto;display:flex;flex-direction:column;gap:2px;}
+  .cr-opt{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:none;background:transparent;color:var(--text);
+    font-size:13px;padding:8px 10px;border-radius:8px;cursor:pointer;}
+  .cr-opt:hover,.cr-opt.hot{background:rgba(76,154,255,.14);}
+  .cr-opt.cur{color:var(--acc);font-weight:700;}
+  .cr-opt .lb{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cr-opt .ck{color:var(--acc);}
+  .cr-opt .kb{font-size:10.5px;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:0 5px;}
+  .cr-none{padding:10px;color:var(--muted);font-size:12.5px;}
+  .cr-popf{display:flex;gap:6px;align-items:center;}
+  .cr-popf .inp{width:170px;}
+
+  /* change log drawer */
+  .cr-logc{position:fixed;right:16px;top:92px;bottom:16px;width:360px;z-index:120;overflow:auto;margin:0;
+    box-shadow:0 24px 60px rgba(0,0,0,.6);animation:fadein .15s ease;}
+  .cr-le{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:8px;padding:8px 2px;border-bottom:1px solid var(--border);font-size:12.5px;align-items:start;}
+  .cr-le:last-child{border-bottom:none;}
+  .cr-le .tm{color:var(--muted);font-size:11.5px;font-variant-numeric:tabular-nums;padding-top:1px;}
+  .cr-le .ch{min-width:0;word-break:break-word;line-height:1.45;}
+  .cr-le s{color:var(--muted);}
+  .cr-le .ok{color:var(--green);font-weight:800;}
+  .cr-le .bad{color:var(--red);font-weight:700;font-size:11.5px;}
+  .cr-fails{font-size:13px;line-height:1.7;max-height:50vh;overflow:auto;}
+
+  @media(max-width:899px){
+    #crBulk{top:calc(env(safe-area-inset-top) + 118px);}
+    .cr-xbox{grid-template-columns:1fr;padding:10px;}
+    .cr-head h2{font-size:18px;}
+    .cr-fbar .cr-d{width:132px;}
+    .cr-q{flex-basis:100%;}
+    .cr-logc{left:8px;right:8px;top:auto;bottom:8px;width:auto;max-height:62vh;}
+    .cr-scroll{max-height:68vh;}
+  }
 </style>
 </head>
 <body>
@@ -1013,6 +1202,7 @@
         <section id="sec-sandbox"></section>
         <section id="sec-audit"></section>
         <section id="sec-report"></section>
+        <section id="sec-control"></section>
 
         <section id="sec-channels"></section>
         <section id="sec-mg-sales"></section>
@@ -1188,6 +1378,50 @@ function applyComposites(list){
     q.totalStock=(+q.inWarehouse||0)+(+q.inStore||0)+(+q.inTransit||0)+(+q.onOrder||0);
   }
 }
+
+/* ---------- horizontal scroll buttons ----------
+   Every wide table container (.tscroll, report .rpt-scroll) gets floating
+   ◀ ▶ buttons instead of a horizontal scrollbar. A MutationObserver re-scans
+   after any re-render, so tabs need no wiring of their own. */
+var HS_SEL=".tscroll,.rpt-scroll";
+function hsUpdate(sc){
+  var w=sc.parentNode; if(!w || !w.classList || !w.classList.contains("hs-wrap")) return;
+  var max=sc.scrollWidth-sc.clientWidth, x=sc.scrollLeft;
+  var l=w.querySelector(":scope>.hs-rail.l"), r=w.querySelector(":scope>.hs-rail.r");
+  var short=sc.offsetHeight<window.innerHeight*0.6;
+  if(l){ l.classList.toggle("on", max>2 && x>2); l.classList.toggle("short", short); }
+  if(r){ r.classList.toggle("on", max>2 && x<max-2); r.classList.toggle("short", short); }
+}
+function hsDecorate(sc){
+  if(sc.getAttribute("data-hs")) return;
+  sc.setAttribute("data-hs","1"); sc.classList.add("hs-x");
+  var w=document.createElement("div"); w.className="hs-wrap";
+  sc.parentNode.insertBefore(w,sc); w.appendChild(sc);
+  [["l","‹",-1],["r","›",1]].forEach(function(d){
+    var rail=document.createElement("div"); rail.className="hs-rail "+d[0];
+    var b=document.createElement("button"); b.type="button"; b.className="hs-btn"; b.textContent=d[1];
+    b.setAttribute("aria-label", d[2]<0?"Scroll left":"Scroll right");
+    b.addEventListener("click",function(e){
+      e.stopPropagation();
+      sc.scrollBy({ left:d[2]*Math.max(160,sc.clientWidth*0.75), behavior:"smooth" });
+    });
+    rail.appendChild(b); w.appendChild(rail);
+  });
+  sc.addEventListener("scroll",function(){ hsUpdate(sc); },{ passive:true });
+  // Fires when a hidden tab/expander becomes visible (size 0 → real).
+  if(window.ResizeObserver) new ResizeObserver(function(){ hsUpdate(sc); }).observe(sc);
+}
+var hsQueued=false;
+function hsScan(){
+  if(hsQueued) return; hsQueued=true;
+  // setTimeout, not rAF: rAF never fires in throttled/background views.
+  setTimeout(function(){
+    hsQueued=false;
+    Array.prototype.forEach.call(document.querySelectorAll(HS_SEL),function(sc){ hsDecorate(sc); hsUpdate(sc); });
+  },60);
+}
+if(window.MutationObserver) new MutationObserver(hsScan).observe(document.body,{ childList:true, subtree:true });
+window.addEventListener("resize",hsScan);
 
 /* ---------- top-level data (populated in boot) ---------- */
 var pnl={}, bal={}, products=[], monthly=[], opex=[], capital=[], cashflow={};
@@ -6405,7 +6639,7 @@ var RP = {
   st:{ from:"", to:"", prevFrom:"", prevTo:"", preset:"this_month", unit:null, gran:"day", granManual:false, cmp:true,
        loading:false, error:"", data:{ cur:{sales:[],expenses:[],cashflow:[]}, prev:{sales:[],expenses:[],cashflow:[]} } },
   filters:{ channels:[], types:[], languages:[], categories:[], q:"", product_id:null, customer:"" },
-  ui:{ panel:"", pnlOpen:{ rev:true, opex:true }, trendM:"pnl", topM:"rev" },
+  ui:{ panel:"", pnlOpen:{ rev:true, opex:true }, topM:"rev" },
   M:null,
   COL:{ rev:"#4c9aff", cogs:"#64748b", opex:"#fbbf24", gp:"#34d399", np:"#22d3ee", prev:"#8499ad", inn:"#34d399", out:"#fb7185", neg:"#fb7185" },
   PAL:["#4c9aff","#8b5cf6","#34d399","#fbbf24","#fb7185","#22d3ee","#f97316","#a3e635","#e879f9","#94a3b8"],
@@ -7133,13 +7367,12 @@ RP.rerender=function(){
 
 /* ---------- events ---------- */
 RP.onClick=function(e){
-  var t=e.target.closest ? e.target.closest("[data-rpa],[data-rpdk],[data-rpgo],[data-rpcsv],[data-rppnl],[data-rptm],[data-rptop]") : null;
+  var t=e.target.closest ? e.target.closest("[data-rpa],[data-rpdk],[data-rpgo],[data-rpcsv],[data-rppnl],[data-rptop]") : null;
   if(!t) return;
   if(t.hasAttribute("data-rpa")){ RP.act(t.getAttribute("data-rpa"),t); return; }
   if(t.hasAttribute("data-rpcsv")){ var fn=RP._csv[t.getAttribute("data-rpcsv")]; if(fn) fn(); return; }
   if(t.hasAttribute("data-rpgo")){ RP.go(t.getAttribute("data-rpgo")); return; }
   if(t.hasAttribute("data-rppnl")){ var k=t.getAttribute("data-rppnl"); RP.ui.pnlOpen[k]=!RP.ui.pnlOpen[k]; RP.renderSection("pnl"); return; }
-  if(t.hasAttribute("data-rptm")){ RP.ui.trendM=t.getAttribute("data-rptm"); RP.renderSection("trend"); return; }
   if(t.hasAttribute("data-rptop")){ RP.ui.topM=t.getAttribute("data-rptop"); RP.renderSection("mix"); return; }
   if(t.hasAttribute("data-rpdk")) RP.drillKV(t.getAttribute("data-rpdk"),t.getAttribute("data-rpdv"));
 };
@@ -7375,10 +7608,10 @@ RP.addSection({ id:"summary", order:10, navKey:"nav.summary", render:function(c)
     { k:"kpi.opex", v:money(a.opex), d:RP.delta(a.opex,p&&p.opex,true), s:RP.t("kpi.s.ofRev",{ p:RP.pctOf(a.opex,a.rev) }), sp:sp(function(b){ return b.opex; },C.opex), go:"expenses" },
     { k:"kpi.np", v:money(a.np), d:RP.delta(a.np,p&&p.np), s:esc(RP.t("kpi.s.margin",{ p:a.nm==null?"—":pct(a.nm) }))+RP.ppDelta(a.nm,p&&p.nm), raw:true,
       sp:sp(function(b){ return b.np; },a.np<0?C.neg:C.np), go:"pnl", neg:a.np<0, hero:true },
-    { k:"kpi.orders", v:num(a.orders), d:RP.delta(a.orders,p&&p.orders), s:RP.t("kpi.s.perDay",{ n:dec(a.orders/M.days,1) }), sp:sp(function(b){ return b.orders; },C.rev), go:"trend" },
+    { k:"kpi.orders", v:num(a.orders), d:RP.delta(a.orders,p&&p.orders), s:RP.t("kpi.s.perDay",{ n:dec(a.orders/M.days,1) }), sp:sp(function(b){ return b.orders; },C.rev), go:"sales-ledger" },
     { k:"kpi.units", v:num(a.units), d:RP.delta(a.units,p&&p.units), s:RP.t("kpi.s.perOrder",{ n:a.orders?dec(a.units/a.orders,1):"—" }), sp:sp(function(b){ return b.units; },C.rev), go:"mix" },
-    { k:"kpi.aov", v:a.aov==null?"—":money(a.aov), d:RP.delta(a.aov,p&&p.aov), s:RP.t("kpi.s.aov"), sp:sp(function(b){ return b.aov; },C.rev), go:"trend" },
-    { k:"kpi.daily", v:money(a.daily), d:RP.delta(a.daily,p&&p.daily), s:RP.t("kpi.s.days",{ n:num(M.days) }), sp:sp(function(b){ return b.rev; },C.rev), go:"trend" }
+    { k:"kpi.aov", v:a.aov==null?"—":money(a.aov), d:RP.delta(a.aov,p&&p.aov), s:RP.t("kpi.s.aov"), sp:sp(function(b){ return b.aov; },C.rev), go:"sales-ledger" },
+    { k:"kpi.daily", v:money(a.daily), d:RP.delta(a.daily,p&&p.daily), s:RP.t("kpi.s.days",{ n:num(M.days) }), sp:sp(function(b){ return b.rev; },C.rev), go:"sales-ledger" }
   ];
   c.innerHTML=RP.secHead("h.summary")+'<div class="rp-kpis">'+K.map(function(x){
     return '<div class="rp-kpi'+(x.hero?' hero':'')+(x.hero&&x.neg?' lossy':'')+'" data-rpgo="'+x.go+'" title="'+esc(RP.t(x.k+".tip"))+'">'
@@ -7453,65 +7686,6 @@ RP.addSection({ id:"pnl", order:20, navKey:"nav.pnl", render:function(c,v){
     });
     RP.csv(RP.fname("pnl"),[RP.t("pnl.line"),RP.t("pnl.cur"),RP.t("pnl.pctRev")].concat(cmp?[RP.t("pnl.prev"),RP.t("pnl.chg"),RP.t("pnl.chgPct")]:[]),rows);
   };
-}});
-
-/* 30 — Trend chart */
-RP.addSection({ id:"trend", order:30, navKey:"nav.trend", render:function(c){
-  var M=RP.M, ser=M.ser, pser=M.pser, C=RP.COL, m=RP.ui.trendM, g=RP.st.gran, cmp=RP.hasCmp();
-  var MS=["pnl","rev","profit","orders","units","margin"];
-  var seg='<div class="seg rp-seg">'+MS.map(function(x){ return '<button type="button" data-rptm="'+x+'"'+(m===x?' class="on"':'')+'>'+esc(RP.t("trend.m."+x))+'</button>'; }).join("")+'</div>';
-  var sub=m==="pnl" ? RP.t("trend.sub.pnl",{ g:RP.t("g."+g) }) : RP.t("trend.sub.m",{ m:RP.t("trend.m."+m), g:RP.t("g."+g) })+(cmp?RP.t("trend.sub.cmp"):"");
-  c.innerHTML=RP.secHead("h.trend")+RP.card(RP.t("trend.title"),sub,"trend",'<div class="rp-chart" id="rpTrend"></div>',seg);
-  RP._csv.trend=function(){
-    RP.csv(RP.fname("trend-"+g),[RP.t("s.period"),"from","to",RP.t("kpi.rev"),RP.t("kpi.cogs"),RP.t("kpi.gp"),RP.t("kpi.opex"),RP.t("kpi.np"),RP.t("kpi.orders"),RP.t("kpi.units"),RP.t("pnl.gm")+" %",RP.t("pnl.nm")+" %"],
-      ser.map(function(b){ return [RP.bLabel(b,true),b.from,b.to,b.rev,b.cogs,b.gp,b.opex,b.np,b.orders,b.units,b.gm,b.nm]; }));
-  };
-  if(!M.cur.orders && !M.cur.opex){ var h=el("rpTrend"); h.classList.add("auto"); h.innerHTML=RP.emptyHtml(); RP.chart("trend",null); return; }
-  var kind="m", ds=[], pr=ser.length>45?0:2.5;
-  function bar(label,fn,color,extra){ var o={ type:"bar", label:label, data:ser.map(fn), backgroundColor:color, borderRadius:3, maxBarThickness:36, order:2 }; for(var k in extra||{}) o[k]=extra[k]; return o; }
-  function line(label,fn,color,extra){ var o={ type:"line", label:label, data:ser.map(fn), borderColor:color, backgroundColor:color, borderWidth:2, tension:.3, pointRadius:pr, pointHoverRadius:4, spanGaps:false, order:1 }; for(var k in extra||{}) o[k]=extra[k]; return o; }
-  function prevLine(label,fn){ return { type:"line", label:label, _prev:true, data:ser.map(function(b,i){ return pser&&pser[i]?fn(pser[i]):null; }),
-    borderColor:C.prev, backgroundColor:C.prev, borderDash:[5,4], borderWidth:1.5, pointRadius:0, pointHoverRadius:3, tension:.3, order:0 }; }
-  if(m==="pnl"){
-    ds=[ bar(RP.t("kpi.rev"),function(b){ return b.rev; },C.rev), bar(RP.t("kpi.cogs"),function(b){ return b.cogs; },C.cogs), bar(RP.t("kpi.opex"),function(b){ return b.opex; },C.opex),
-         line(RP.t("kpi.gp"),function(b){ return b.gp; },C.gp), line(RP.t("kpi.np"),function(b){ return b.np; },C.np) ];
-  } else if(m==="rev"){
-    ds=[ bar(RP.t("kpi.rev"),function(b){ return b.rev; },C.rev) ]; if(pser) ds.push(prevLine(RP.t("s.prev"),function(b){ return b.rev; }));
-  } else if(m==="profit"){
-    ds=[ bar(RP.t("kpi.gp"),function(b){ return b.gp; },C.gp), bar(RP.t("kpi.np"),function(b){ return b.np; },ser.map(function(b){ return b.np<0?C.neg:C.np; })) ];
-    if(pser) ds.push(prevLine(RP.t("s.prevNet"),function(b){ return b.np; }));
-  } else if(m==="orders"){
-    kind="n"; ds=[ bar(RP.t("kpi.orders"),function(b){ return b.orders; },C.rev) ]; if(pser) ds.push(prevLine(RP.t("s.prev"),function(b){ return b.orders; }));
-  } else if(m==="units"){
-    kind="n"; ds=[ bar(RP.t("kpi.units"),function(b){ return b.units; },C.rev) ]; if(pser) ds.push(prevLine(RP.t("s.prev"),function(b){ return b.units; }));
-  } else {
-    kind="p"; ds=[ line(RP.t("s.gm"),function(b){ return b.gm; },C.gp), line(RP.t("s.nm"),function(b){ return b.nm; },C.np) ];
-    if(pser) ds.push(prevLine(RP.t("s.prev")+" · "+RP.t("s.gm"),function(b){ return b.gm; }));
-  }
-  RP.chart("trend",el("rpTrend"),{
-    type:"bar",
-    data:{ labels:ser.map(function(b){ return RP.bLabel(b); }), datasets:ds },
-    options:{ interaction:{ mode:"index", intersect:false },
-      scales:{ x:{ grid:{ display:false }, ticks:{ maxRotation:0, autoSkipPadding:14 } }, y:RP.axis(kind) },
-      plugins:{ legend:{ position:"bottom" },
-        tooltip:{ callbacks:{
-          title:function(it){ return it.length?RP.bLabel(ser[it[0].dataIndex],true):""; },
-          label:function(x){
-            var lbl=x.dataset.label;
-            if(x.dataset._prev && pser && pser[x.dataIndex]) lbl+=" ("+RP.bLabel(pser[x.dataIndex],true)+")";
-            return " "+lbl+": "+RP.fmtV(x.parsed.y,kind);
-          },
-          footer:function(it){
-            if(m!=="pnl"||!it.length) return "";
-            var b=ser[it[0].dataIndex];
-            return RP.t("s.gm")+" "+(b.gm==null?"—":pct(b.gm))+" · "+RP.t("s.nm")+" "+(b.nm==null?"—":pct(b.nm))+" · "+RP.t("kpi.orders")+" "+(privOn()?"•••":num(b.orders));
-          } } } },
-      onHover:RP.hoverPtr,
-      onClick:function(e,els){
-        if(!els.length || ser.length<2) return;
-        var b=ser[els[0].index]; if(b) RP.drill({ from:b.from, to:b.to });
-      } }
-  });
 }});
 
 /* 40 — Revenue mix */
@@ -8533,6 +8707,1492 @@ RP.addSection({id:"cash-ledger", order:96, navKey:"rt.nav.cash", render:function
 }});
 
 })();
+
+
+/* =================================================================
+   CONTROL ROOM (CR) — inline + bulk editing across the books
+   ================================================================= */
+var CR = {
+  ent:"sales", built:false, active:false, showLog:false,
+  ENTS:["sales","expenses","invoices","shipments","products"],
+  ICON:{ sales:"🛍️", expenses:"💸", invoices:"🧾", shipments:"🚚", products:"🎴" },
+  E:{}, SUB:{}, D:{}, S:{}, cell:{}, sub:{}, log:[], undo:null, busy:null, _pop:null, _rows:[]
+};
+
+CR.T = {
+ en:{
+  "tab":"Control Room","title":"Control Room",
+  "sub":"Edit sales, expenses, invoices, shipments and products in place — click a cell, change it, done. Tick rows to edit many at once.",
+  "e.sales":"Sales","e.expenses":"Expenses","e.invoices":"Invoices","e.shipments":"Shipments","e.products":"Products & stock",
+  "search":"Search…","from":"From","to":"To","customer":"Customer…",
+  "allch":"All channels","allprod":"All products","allcat":"All categories","allsup":"All suppliers","allpay":"Any payment","allship":"Any fulfilment",
+  "allst":"Any status","alltype":"All types","alllang":"All languages","allact":"Active + inactive","allstock":"Any stock",
+  "f.on":"Active only","f.off":"Inactive only","f.in":"In stock","f.out":"Out of stock",
+  "p.today":"Today","p.7":"7 days","p.30":"30 days","p.month":"This month","p.all":"All time",
+  "reset":"Reset filters","csv":"CSV","reload":"Reload","undo":"Undo","log":"Change log",
+  "hint":"Click a cell to edit · Enter saves · Esc cancels · Tab jumps to the next field · arrows move · ▸ opens details · Shift-click selects a range · Ctrl/⌘+Z undoes",
+  "hint.p":"Stock columns are read-only — they come from invoices, shipments, sales and transfers.",
+  "none":"No match","empty":"Nothing matches these filters.","err":"Could not load — {m}","retry":"Retry",
+  "shown":"Showing {a} of {b}","more":"Show {n} more","showall":"Show all","w.rows":"rows",
+  "sel":"{n} selected","selof":"all {n} filtered rows","selall":"Select all {n} filtered","clear":"Clear",
+  "b.channel":"Channel","b.date":"📅 Date","b.cust":"👤 Customer","b.cat":"🏷️ Category","b.del":"🗑️ Delete",
+  "b.on":"✅ Activate","b.off":"⛔ Deactivate","b.price":"💵 Sale price","b.type":"🧩 Type","apply":"Apply",
+  "working":"Updating {a} / {b}…","done":"✓ {ok} updated","donebad":"✓ {ok} updated · ✗ {bad} failed",
+  "failtitle":"Some rows were not updated","tagged":"Tagged {n} sale(s) as {ch}","mixed":"previous channels",
+  "del.title":"Delete {n} row(s)?",
+  "del.sales":"Each sale's stock returns via FIFO reversal and the sale vanishes from every report. This cannot be undone.",
+  "del.expenses":"They disappear from the cashflow ledger and every profit figure. This cannot be undone.",
+  "del.ok":"Delete","deleted":"Deleted {n}",
+  "q.title":"Change quantity?",
+  "q.body":"Sale #{id}: {a} → {b} units. Saving re-plans FIFO on the server: the old batch allocations are released and COGS is recomputed from the oldest stock available now. If there isn't enough stock, the old allocations are restored and nothing changes.",
+  "q.ok":"Re-plan & save",
+  "arr.title":"Mark shipment #{id} arrived?","arr.body":"Its units move from 🚚 in transit to 🏠 warehouse as of today and become sellable.","arr.ok":"Mark arrived",
+  "e.num":"Enter a valid number","e.qty":"Quantity must be at least 1","e.date":"Enter a valid date","e.req":"This can't be empty",
+  "e.ship":"Can't go below the {n} already shipped",
+  "undone":"Undone","nothing":"Nothing to undo","undo.t":"Undo: {w}",
+  "log.t":"Change log · this session","log.empty":"Edits you make in the Control Room show up here (old → new), so you can double-check them.",
+  "log.bulk":"{n} rows","log.fail":"failed",
+  "x.details":"Details","x.fifo":"FIFO cost basis — locked at sale time","x.cogs":"COGS","x.profit":"Profit","x.margin":"Margin",
+  "x.noalloc":"No cost allocation recorded — COGS is 0 for this sale.",
+  "x.fifohint":"Read-only. Changing quantity re-plans FIFO; changing price keeps the same batches.",
+  "x.lines":"Lines","x.pay":"Payments","x.paid":"Paid IDR","x.out":"Outstanding","x.total":"Total","x.nopay":"No payments recorded.","x.nolines":"No lines.",
+  "x.stock":"Stock by location","x.stockhint":"Read-only — stock is a ledger built from invoices (⏳), shipments (🚚 → 🏠), sales and transfers. Change those to move quantities.",
+  "x.batches":"Cost batches","x.nobatch":"No batch detail for this product.",
+  "x.lineshint":"Click a quantity or cost to edit it. A line can't drop below what's already shipped.",
+  "x.shiplineshint":"Click a quantity to edit it — landed cost and warehouse stock recompute on the server.",
+  "x.loc":"Sold from","x.order":"Order id","x.by":"Entered by","x.inv":"Invoice","x.weight":"Weight","x.rev":"Revenue","x.legs":"Shared legs",
+  "c.id":"#","c.date":"Date","c.product":"Product","c.qty":"Qty","c.unit":"Unit price","c.total":"Total","c.channel":"Channel","c.customer":"Customer",
+  "c.notes":"Notes","c.cogs":"COGS","c.profit":"Profit","c.loc":"Loc",
+  "c.category":"Category","c.from":"From","c.to":"To","c.amount":"Amount","c.desc":"Description",
+  "c.supplier":"Supplier","c.ccy":"Ccy","c.totalidr":"Total IDR","c.paid":"Paid IDR","c.out":"Outstanding","c.ship":"Fulfilment","c.pay":"Payment",
+  "c.label":"Label","c.cost":"Direct cost","c.status":"Status","c.arrived":"Arrived","c.lines":"Lines","c.units":"Units",
+  "c.name":"Name","c.lang":"Language","c.type":"Type","c.price":"Sale price","c.sku":"SKU","c.active":"Status",
+  "c.wh":"🏠 Whs","c.st":"🏬 Store","c.tr":"🚚 Transit","c.oo":"⏳ Order","c.stock":"Total","c.avg":"Avg landed","c.sold":"Sold",
+  "c.ordered":"Ordered","c.shipped":"Shipped","c.open":"Open","c.costn":"Cost/u {c}","c.costi":"Cost/u IDR","c.linet":"Line IDR",
+  "c.buy":"Buy/u","c.shipu":"Ship/u","c.landed":"Landed/u","c.batch":"Batch",
+  "st.unpaid":"unpaid","st.partial":"part-paid","st.paid":"paid","st.unshipped":"not shipped","st.pship":"partly shipped","st.shipped":"shipped",
+  "st.closed":"closed short","st.transit":"in transit","st.arrived":"arrived","yes":"Active","no":"Inactive",
+  "s.units":"units","s.rev":"revenue","s.profit":"profit","s.total":"total","s.out":"outstanding (IDR invoices)","s.paid":"paid","s.cost":"direct cost",
+  "s.stock":"units sellable","s.value":"stock value at avg landed",
+  "csv.none":"CSV export needs the Report module."
+ },
+ id:{
+  "tab":"Ruang Kontrol","title":"Ruang Kontrol",
+  "sub":"Ubah penjualan, pengeluaran, invoice, pengiriman, dan produk langsung di tabel — klik sel, ganti, beres. Centang beberapa baris untuk mengubah sekaligus.",
+  "e.sales":"Penjualan","e.expenses":"Pengeluaran","e.invoices":"Invoice","e.shipments":"Pengiriman","e.products":"Produk & stok",
+  "search":"Cari…","from":"Dari","to":"Sampai","customer":"Pelanggan…",
+  "allch":"Semua channel","allprod":"Semua produk","allcat":"Semua kategori","allsup":"Semua supplier","allpay":"Semua status bayar","allship":"Semua status kirim",
+  "allst":"Semua status","alltype":"Semua tipe","alllang":"Semua bahasa","allact":"Aktif + nonaktif","allstock":"Semua stok",
+  "f.on":"Aktif saja","f.off":"Nonaktif saja","f.in":"Ada stok","f.out":"Stok habis",
+  "p.today":"Hari ini","p.7":"7 hari","p.30":"30 hari","p.month":"Bulan ini","p.all":"Semua",
+  "reset":"Reset filter","csv":"CSV","reload":"Muat ulang","undo":"Urungkan","log":"Riwayat ubah",
+  "hint":"Klik sel untuk mengubah · Enter simpan · Esc batal · Tab ke kolom berikutnya · panah untuk pindah · ▸ buka detail · Shift-klik pilih rentang · Ctrl/⌘+Z urungkan",
+  "hint.p":"Kolom stok hanya-baca — angkanya berasal dari invoice, pengiriman, penjualan, dan transfer.",
+  "none":"Tidak ada","empty":"Tidak ada data yang cocok dengan filter ini.","err":"Gagal memuat — {m}","retry":"Coba lagi",
+  "shown":"Menampilkan {a} dari {b}","more":"Tampilkan {n} lagi","showall":"Tampilkan semua","w.rows":"baris",
+  "sel":"{n} dipilih","selof":"semua {n} hasil filter","selall":"Pilih semua {n} hasil filter","clear":"Batal",
+  "b.channel":"Channel","b.date":"📅 Tanggal","b.cust":"👤 Pelanggan","b.cat":"🏷️ Kategori","b.del":"🗑️ Hapus",
+  "b.on":"✅ Aktifkan","b.off":"⛔ Nonaktifkan","b.price":"💵 Harga jual","b.type":"🧩 Tipe","apply":"Terapkan",
+  "working":"Memperbarui {a} / {b}…","done":"✓ {ok} diperbarui","donebad":"✓ {ok} diperbarui · ✗ {bad} gagal",
+  "failtitle":"Beberapa baris gagal diperbarui","tagged":"{n} penjualan ditandai {ch}","mixed":"channel sebelumnya",
+  "del.title":"Hapus {n} baris?",
+  "del.sales":"Stok tiap penjualan dikembalikan lewat pembalikan FIFO, dan penjualannya hilang dari semua laporan. Tidak bisa diurungkan.",
+  "del.expenses":"Pengeluarannya hilang dari buku kas dan semua angka laba. Tidak bisa diurungkan.",
+  "del.ok":"Hapus","deleted":"{n} dihapus",
+  "q.title":"Ubah jumlah?",
+  "q.body":"Penjualan #{id}: {a} → {b} unit. Saat disimpan, FIFO dihitung ulang di server: alokasi batch lama dilepas dan HPP dihitung dari stok tertua yang tersedia sekarang. Kalau stoknya tidak cukup, alokasi lama dikembalikan dan tidak ada yang berubah.",
+  "q.ok":"Hitung ulang & simpan",
+  "arr.title":"Tandai pengiriman #{id} sudah tiba?","arr.body":"Unitnya pindah dari 🚚 dalam perjalanan ke 🏠 gudang per hari ini dan bisa dijual.","arr.ok":"Tandai tiba",
+  "e.num":"Masukkan angka yang valid","e.qty":"Jumlah minimal 1","e.date":"Masukkan tanggal yang valid","e.req":"Tidak boleh kosong",
+  "e.ship":"Tidak bisa di bawah {n} yang sudah dikirim",
+  "undone":"Sudah diurungkan","nothing":"Tidak ada yang bisa diurungkan","undo.t":"Urungkan: {w}",
+  "log.t":"Riwayat ubah · sesi ini","log.empty":"Setiap perubahan di Ruang Kontrol muncul di sini (lama → baru), jadi bisa kamu cek ulang.",
+  "log.bulk":"{n} baris","log.fail":"gagal",
+  "x.details":"Detail","x.fifo":"Dasar biaya FIFO — terkunci saat penjualan","x.cogs":"HPP","x.profit":"Laba","x.margin":"Margin",
+  "x.noalloc":"Tidak ada alokasi biaya — HPP penjualan ini 0.",
+  "x.fifohint":"Hanya-baca. Mengubah jumlah = FIFO dihitung ulang; mengubah harga tetap memakai batch yang sama.",
+  "x.lines":"Baris item","x.pay":"Pembayaran","x.paid":"Terbayar IDR","x.out":"Sisa tagihan","x.total":"Total","x.nopay":"Belum ada pembayaran.","x.nolines":"Belum ada baris.",
+  "x.stock":"Stok per lokasi","x.stockhint":"Hanya-baca — stok adalah buku besar dari invoice (⏳), pengiriman (🚚 → 🏠), penjualan, dan transfer. Ubah dari sana untuk memindahkan jumlah.",
+  "x.batches":"Batch biaya","x.nobatch":"Belum ada detail batch untuk produk ini.",
+  "x.lineshint":"Klik jumlah atau biaya untuk mengubah. Jumlah tidak bisa di bawah yang sudah dikirim.",
+  "x.shiplineshint":"Klik jumlah untuk mengubah — biaya landed dan stok gudang dihitung ulang di server.",
+  "x.loc":"Dijual dari","x.order":"ID pesanan","x.by":"Dicatat oleh","x.inv":"Invoice","x.weight":"Berat","x.rev":"Omzet","x.legs":"Leg bersama",
+  "c.id":"#","c.date":"Tanggal","c.product":"Produk","c.qty":"Jml","c.unit":"Harga/unit","c.total":"Total","c.channel":"Channel","c.customer":"Pelanggan",
+  "c.notes":"Catatan","c.cogs":"HPP","c.profit":"Laba","c.loc":"Lok",
+  "c.category":"Kategori","c.from":"Dari","c.to":"Ke","c.amount":"Jumlah","c.desc":"Keterangan",
+  "c.supplier":"Supplier","c.ccy":"Kurs","c.totalidr":"Total IDR","c.paid":"Terbayar IDR","c.out":"Sisa","c.ship":"Pengiriman","c.pay":"Pembayaran",
+  "c.label":"Label","c.cost":"Ongkir langsung","c.status":"Status","c.arrived":"Tiba","c.lines":"Baris","c.units":"Unit",
+  "c.name":"Nama","c.lang":"Bahasa","c.type":"Tipe","c.price":"Harga jual","c.sku":"SKU","c.active":"Status",
+  "c.wh":"🏠 Gudang","c.st":"🏬 Toko","c.tr":"🚚 Jalan","c.oo":"⏳ Pesan","c.stock":"Total","c.avg":"Rata-rata landed","c.sold":"Terjual",
+  "c.ordered":"Dipesan","c.shipped":"Terkirim","c.open":"Sisa","c.costn":"Biaya/u {c}","c.costi":"Biaya/u IDR","c.linet":"Baris IDR",
+  "c.buy":"Beli/u","c.shipu":"Ongkir/u","c.landed":"Landed/u","c.batch":"Batch",
+  "st.unpaid":"belum bayar","st.partial":"bayar sebagian","st.paid":"lunas","st.unshipped":"belum dikirim","st.pship":"terkirim sebagian","st.shipped":"terkirim",
+  "st.closed":"ditutup kurang","st.transit":"dalam perjalanan","st.arrived":"sudah tiba","yes":"Aktif","no":"Nonaktif",
+  "s.units":"unit","s.rev":"omzet","s.profit":"laba","s.total":"total","s.out":"sisa tagihan (invoice IDR)","s.paid":"terbayar","s.cost":"ongkir langsung",
+  "s.stock":"unit siap jual","s.value":"nilai stok (rata-rata landed)",
+  "csv.none":"Ekspor CSV butuh modul Laporan."
+ }
+};
+CR.lang=function(){
+  if(typeof RP!=="undefined" && (RP.lang==="en"||RP.lang==="id")) return RP.lang;
+  try{ var l=localStorage.getItem("pokehit_report_lang"); if(l==="en"||l==="id") return l; }catch(e){}
+  return "id";
+};
+CR.t=function(k,v){
+  var L=CR.T[CR.lang()]||CR.T.en, s=(L[k]!=null)?L[k]:((CR.T.en[k]!=null)?CR.T.en[k]:k);
+  if(v) for(var x in v) s=s.split("{"+x+"}").join(String(v[x]));
+  return s;
+};
+CR.setLang=function(l){
+  try{ localStorage.setItem("pokehit_report_lang",l); }catch(e){}
+  if(typeof RP!=="undefined"){ RP.lang=l; try{ RP.navLabel(); }catch(e){} }
+  CR.navLabel(); CR.render();
+};
+
+/* ---------- state ---------- */
+CR.st=function(ent){ return CR.S[ent]||(CR.S[ent]={ q:"", f:{}, sort:null, sel:{}, open:{}, lim:200, last:-1 }); };
+CR.dat=function(ent){ return CR.D[ent]||(CR.D[ent]={ rows:[], loaded:false, loading:false, err:"" }); };
+CR.col=function(ent,k){ var c=CR.E[ent].cols; for(var i=0;i<c.length;i++) if(c[i].k===k) return c[i]; return null; };
+CR.find=function(ent,id){ var r=CR.dat(ent).rows; for(var i=0;i<r.length;i++) if(String(r[i].id)===String(id)) return r[i]; return null; };
+CR.clone=function(o){ var c={}; for(var k in o) c[k]=o[k]; return c; };
+CR.restore=function(row,snap){ var k; for(k in row) if(!(k in snap)) delete row[k]; for(k in snap) row[k]=snap[k]; };
+CR.merge=function(row,p){ if(p) for(var k in p) row[k]=p[k]; };
+CR.same=function(a,b){ return String(a==null?"":a)===String(b==null?"":b); };
+CR.isNum=function(c){ return c.type==="money"||c.type==="int"||c.type==="dec"||!!c.num; };
+CR.canEdit=function(c,r){ return !!c && c.type!=="ro" && (typeof c.edit!=="function" || !!c.edit(r)); };
+CR.hhmm=function(){ var d=new Date(); return ("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2); };
+CR.dash='<span class="cr-mut">—</span>';
+CR.hex={ green:"#34d399", amber:"#fbbf24", red:"#fb7185", muted:"#8499ad", acc:"#4c9aff" };
+CR.chip=function(color,txt){ return '<span class="mg-chip" style="color:'+color+';border-color:'+color+'66;background:'+color+'14;">'+txt+'</span>'; };
+
+/* Column factory. type: ro | text | money | int | dec | date | enum.
+   get(r) raw value · show(r) cell html · save(r,val,snap) → Promise(patch|null)
+   local(r,val) optimistic write · opts(r) enum options [{v,l,ic}] */
+CR.C=function(o){
+  var c={ type:"ro" };
+  for(var x in o) c[x]=o[x];
+  if(!c.al) c.al=CR.isNum(c)?"r":"l";
+  if(!c.get) c.get=(c.type==="money"||c.type==="int"||c.type==="dec")
+    ? function(r){ var v=r[c.k]; return (v==null||v==="")?null:+v; }
+    : function(r){ return r[c.k]; };
+  if(!c.v) c.v=function(r){ var v=c.get(r); return CR.isNum(c)?((v==null||v==="")?null:+v):(v==null?"":String(v).toLowerCase()); };
+  if(!c.show) c.show=function(r){ return c.type==="enum"?esc(CR.optLabel(c,r)):CR.fmt(c,c.get(r)); };
+  if(!c.local) c.local=function(r,v){ r[c.k]=v; };
+  return c;
+};
+CR.fmt=function(c,v){
+  if(c.type==="money") return (v==null||v==="")?CR.dash:money(v);
+  if(c.type==="int") return (v==null||v==="")?CR.dash:num(v);
+  if(c.type==="dec") return (v==null||v==="")?CR.dash:dec(v);
+  if(c.type==="date") return v?esc(String(v).slice(0,10)):CR.dash;
+  return (v==null||v==="")?CR.dash:esc(v);
+};
+CR.optLabel=function(c,r){
+  var v=c.get(r), os=c.opts(r);
+  for(var i=0;i<os.length;i++) if(String(os[i].v)===String(v)) return os[i].l;
+  return v==null?"":String(v);
+};
+// Plain value for CSV / the change log.
+CR.txt=function(c,r){
+  if(c.csv) return c.csv(r);
+  if(c.type==="enum") return CR.optLabel(c,r);
+  var v=c.get(r);
+  if(CR.isNum(c)) return (v==null||v==="")?"":+v;
+  if(c.type==="date") return v?String(v).slice(0,10):"";
+  return v==null?"":String(v);
+};
+CR.logv=function(c,r){ var v=CR.txt(c,r); if(v===""||v==null) return "—"; return c.type==="money"?money(v):String(v); };
+CR.parse=function(col,raw){
+  var s=String(raw==null?"":raw).trim(), t=col.type;
+  if(t==="money"){
+    if(s==="") return col.nullable?{ val:null }:{ err:CR.t("e.num") };
+    var m=MG.parseMoney(s); if(!(m>=0)) return { err:CR.t("e.num") };
+    return { val:m };
+  }
+  if(t==="int"){ var q=MG.parseMoney(s); if(!(q>=1)) return { err:CR.t("e.qty") }; return { val:q }; }
+  if(t==="dec"){
+    if(s.indexOf(",")>=0) s=s.split(".").join("").split(",").join(".");
+    var d=Number(s); if(s===""||!isFinite(d)||d<0) return { err:CR.t("e.num") };
+    return { val:d };
+  }
+  if(t==="date"){
+    if(s.length!==10||s.charAt(4)!=="-"||s.charAt(7)!=="-"||isNaN(Date.parse(s))) return { err:CR.t("e.date") };
+    return { val:s };
+  }
+  if(col.req && !s) return { err:CR.t("e.req") };
+  return { val:s };
+};
+
+/* ---------- data ---------- */
+CR.load=function(ent,force,quiet){
+  var D=CR.dat(ent), E=CR.E[ent];
+  if(D.loading) return D.p;
+  if(D.loaded && !force) return Promise.resolve();
+  D.loading=true; D.err="";
+  if(!quiet && CR.active && CR.ent===ent){ D.loaded=false; CR.paintGrid(); }
+  D.p=Promise.all([MG.loadCatalog(), E.fetch(force)]).then(function(r){
+    D.rows=arr(r[1]); D.loaded=true; D.loading=false;
+    if(CR.active){ if(CR.ent===ent){ if(!quiet) CR.paintFbar(); CR.paintGrid(); } else CR.paintEnts(); }
+  }).catch(function(err){
+    D.loading=false; D.err=(err&&err.message)||"error";
+    if(err && err.code===401) MG.fail(err);
+    if(CR.active && CR.ent===ent) CR.paintGrid();
+  });
+  return D.p;
+};
+// After a write: refresh the catalog when stock moved, mark sibling lists and
+// the Report stale (refresh it in place only if it is the tab on screen).
+CR.after=function(ent,stock){
+  if(stock){
+    clearTimeout(CR._catT);
+    CR._catT=setTimeout(function(){
+      MG.loadCatalog(true).then(function(){
+        if(CR.D.products) CR.D.products.rows=MG.cat.products;
+        if(CR.active && CR.ent==="products") CR.paintGrid();
+      }).catch(function(){});
+    },400);
+    if(ent==="invoices" && CR.D.shipments) CR.D.shipments.loaded=false;
+    if(ent==="shipments" && CR.D.invoices) CR.D.invoices.loaded=false;
+  }
+  if(typeof RP!=="undefined"){
+    if(RP._active){ try{ RP.refresh(); }catch(e){} }
+    else { RP._cache={}; RP._hasData=false; }
+  }
+};
+
+/* ---------- writes ---------- */
+CR.ckey=function(ent,id,k){ return ent+"|"+id+"|"+k; };
+CR.flash=function(key){
+  setTimeout(function(){
+    if(CR.cell[key]==="ok") delete CR.cell[key];
+    Array.prototype.forEach.call(document.querySelectorAll("#crRoot .cr-c.ok"),function(n){
+      if(n.getAttribute("data-ck")===key) n.classList.remove("ok");
+    });
+  },1500);
+};
+CR.setUndo=function(u){ CR.undo=u; CR.paintHead(); };
+CR.addLog=function(e){ e.tm=CR.hhmm(); CR.log.unshift(e); if(CR.log.length>300) CR.log.length=300; CR.paintHead(); CR.paintLog(); };
+
+CR.commit=function(ent,id,k,val,o){
+  o=o||{};
+  var row=CR.find(ent,id), col=CR.col(ent,k);
+  if(!row||!col) return Promise.resolve(false);
+  var old=col.get(row);
+  if(CR.same(old,val)){ CR.paintRow(ent,id); return Promise.resolve(false); }
+  var go=col.confirm?col.confirm(row,val):Promise.resolve(true);
+  return go.then(function(yes){
+    if(!yes){ CR.paintRow(ent,id); return false; }
+    var snap=CR.clone(row), key=CR.ckey(ent,id,k), a=CR.logv(col,row);
+    col.local(row,val);
+    var b=CR.logv(col,row), w=CR.t(col.h,col.hv);
+    CR.cell[key]="saving"; CR.paintRow(ent,id);
+    return col.save(row,val,snap).then(function(patch){
+      CR.merge(row,patch);
+      CR.cell[key]="ok"; CR.paintRow(ent,id); CR.flash(key);
+      CR.addLog({ ent:ent, id:id, w:w, a:a, b:CR.logv(col,row), m:col.type==="money", ok:true, u:!!o.isUndo });
+      if(!o.isUndo) CR.setUndo(col.noUndo?null:{ ent:ent, w:w+" #"+id, items:[{ id:id, k:k, val:old }] });
+      CR.after(ent,col.stock);
+      if(col.then) col.then(row);
+      return true;
+    }).catch(function(err){
+      CR.restore(row,snap); delete CR.cell[key]; CR.paintRow(ent,id);
+      MG.fail(err);
+      CR.addLog({ ent:ent, id:id, w:w, a:a, b:b, m:col.type==="money", ok:false, err:(err&&err.message)||"", u:!!o.isUndo });
+      return false;
+    });
+  });
+};
+
+// Sequential so FIFO-touching writes never race; one bad row never stops the rest.
+CR.runItems=function(ent,items,o){
+  o=o||{};
+  if(CR.busy||!items.length) return Promise.resolve();
+  var ok=0, bad=[], undo=[];
+  CR.busy={ a:0, b:items.length }; CR.paintBulk();
+  var chain=Promise.resolve();
+  items.forEach(function(it){
+    chain=chain.then(function(){
+      var row=CR.find(ent,it.id), col=CR.col(ent,it.k);
+      if(!row||!col){ bad.push({ id:it.id, m:"not found" }); return; }
+      var old=col.get(row);
+      if(CR.same(old,it.val)){ ok++; return; }
+      var snap=CR.clone(row), key=CR.ckey(ent,it.id,it.k);
+      col.local(row,it.val); CR.cell[key]="saving"; CR.paintRow(ent,it.id);
+      return col.save(row,it.val,snap).then(function(p){
+        CR.merge(row,p); ok++; undo.push({ id:it.id, k:it.k, val:old });
+        CR.cell[key]="ok"; CR.flash(key);
+      }).catch(function(err){
+        CR.restore(row,snap); delete CR.cell[key];
+        bad.push({ id:it.id, m:(err&&err.message)||"error" });
+      });
+    }).then(function(){ CR.busy.a++; CR.paintRow(ent,it.id); CR.paintBulk(); });
+  });
+  return chain.then(function(){
+    CR.busy=null;
+    CR.summary(ok,bad);
+    CR.addLog({ ent:ent, bulk:items.length, w:o.w, b:o.b, ok:!bad.length, bad:bad.length, u:!!o.isUndo, err:bad.length?bad[0].m:"" });
+    if(!o.isUndo && undo.length) CR.setUndo({ ent:ent, w:o.w+" ×"+undo.length, items:undo });
+    CR.after(ent,o.stock);
+    CR.paintGrid();
+  });
+};
+CR.summary=function(ok,bad){
+  MG.toast(bad.length?CR.t("donebad",{ ok:num(ok), bad:num(bad.length) }):CR.t("done",{ ok:num(ok) }), bad.length?"err":"ok");
+  if(bad.length) MG.modal({ title:esc(CR.t("failtitle")),
+    body:'<div class="cr-fails">'+bad.map(function(b){ return '<div><b>#'+esc(b.id)+'</b> — '+esc(b.m)+'</div>'; }).join("")+'</div>' });
+};
+
+// Bulk sale channel: one sales.classify per target channel (undo may mix channels).
+CR.classify=function(pairs,isUndo){
+  if(CR.busy||!pairs.length) return Promise.resolve();
+  var groups={}, prev={}, okIds={}, ok=0, bad=[];
+  pairs.forEach(function(p){
+    prev[p.row.id]=p.row.channel||"manual";
+    (groups[p.to]||(groups[p.to]=[])).push(p.row);
+    p.row.channel=p.to;
+    CR.cell[CR.ckey("sales",p.row.id,"channel")]="saving";
+  });
+  var chs=Object.keys(groups);
+  CR.busy={ a:0, b:pairs.length }; CR.paintGrid();
+  var chain=Promise.resolve();
+  chs.forEach(function(ch){
+    chain=chain.then(function(){
+      var rs=groups[ch];
+      return MG.api("sales.classify",{ ids:rs.map(function(r){ return Number(r.id); }), channel:ch }).then(function(){
+        rs.forEach(function(r){ var key=CR.ckey("sales",r.id,"channel"); CR.cell[key]="ok"; CR.flash(key); okIds[r.id]=1; });
+        ok+=rs.length;
+      }).catch(function(err){
+        rs.forEach(function(r){ r.channel=prev[r.id]; delete CR.cell[CR.ckey("sales",r.id,"channel")]; bad.push({ id:r.id, m:(err&&err.message)||"error" }); });
+      }).then(function(){ CR.busy.a+=rs.length; CR.paintBulk(); });
+    });
+  });
+  return chain.then(function(){
+    CR.busy=null;
+    var lbl=chs.length===1?MG.chById(chs[0]).label:CR.t("mixed");
+    if(bad.length) CR.summary(ok,bad);
+    else MG.toast(isUndo?CR.t("undone"):CR.t("tagged",{ n:num(ok), ch:lbl }),"ok");
+    CR.addLog({ ent:"sales", bulk:pairs.length, w:CR.t("c.channel"), b:lbl, ok:!bad.length, bad:bad.length, u:!!isUndo, err:bad.length?bad[0].m:"" });
+    if(!isUndo && ok) CR.setUndo({ classify:true, ent:"sales", w:CR.t("c.channel")+" → "+lbl+" ×"+ok,
+      pairs:pairs.filter(function(p){ return okIds[p.row.id]; }).map(function(p){ return { id:p.row.id, to:prev[p.row.id] }; }) });
+    CR.after("sales");
+    CR.paintGrid();
+  });
+};
+CR.bulkChannel=function(ch){
+  var S=CR.st("sales"), pairs=[];
+  Object.keys(S.sel).forEach(function(id){ var r=CR.find("sales",id); if(r) pairs.push({ row:r, to:ch }); });
+  return CR.classify(pairs,false);
+};
+CR.bulkSet=function(ent,k,val){
+  var col=CR.col(ent,k), tmp={};
+  col.local(tmp,val);
+  var ids=Object.keys(CR.st(ent).sel);
+  return CR.runItems(ent, ids.map(function(id){ return { id:id, k:k, val:val }; }), { w:CR.t(col.h,col.hv), b:CR.logv(col,tmp), stock:col.stock });
+};
+CR.bulkDelete=function(ent){
+  var E=CR.E[ent], S=CR.st(ent), ids=Object.keys(S.sel);
+  if(!ids.length||CR.busy||!E.del) return;
+  MG.confirmBox(esc(CR.t("del.title",{ n:num(ids.length) })), esc(CR.t("del."+ent)), esc(CR.t("del.ok"))).then(function(yes){
+    if(!yes) return;
+    var ok=0, bad=[], D=CR.dat(ent), chain=Promise.resolve();
+    CR.busy={ a:0, b:ids.length }; CR.paintBulk();
+    ids.forEach(function(id){
+      chain=chain.then(function(){
+        return E.del(id).then(function(){
+          ok++;
+          D.rows=D.rows.filter(function(r){ return String(r.id)!==String(id); });
+          delete S.sel[id]; delete S.open[id];
+        }).catch(function(e){ bad.push({ id:id, m:(e&&e.message)||"error" }); })
+          .then(function(){ CR.busy.a++; CR.paintBulk(); });
+      });
+    });
+    chain.then(function(){
+      CR.busy=null;
+      if(bad.length) CR.summary(ok,bad); else MG.toast(CR.t("deleted",{ n:num(ok) }),"ok");
+      CR.addLog({ ent:ent, bulk:ids.length, w:CR.t("b.del"), b:"", ok:!bad.length, bad:bad.length, err:bad.length?bad[0].m:"" });
+      CR.undo=null; CR.paintHead();
+      CR.after(ent, ent==="sales");
+      CR.paintGrid();
+    });
+  });
+};
+
+CR.doUndo=function(){
+  var u=CR.undo;
+  if(!u){ MG.toast(CR.t("nothing")); return; }
+  if(CR.busy) return;
+  CR.undo=null; CR.paintHead();
+  if(u.classify){
+    var pairs=[];
+    u.pairs.forEach(function(p){ var r=CR.find("sales",p.id); if(r) pairs.push({ row:r, to:p.to }); });
+    return CR.classify(pairs,true);
+  }
+  if(u.sub) return CR.commitSub(u.sub,u.pid,u.lid,u.k,u.val,{ isUndo:true });
+  if(u.items.length===1){ var it=u.items[0]; return CR.commit(u.ent,it.id,it.k,it.val,{ isUndo:true }); }
+  return CR.runItems(u.ent,u.items,{ w:"↶ "+u.w, isUndo:true, stock:true });
+};
+
+/* ---------- line items inside an expanded invoice / shipment ---------- */
+CR.subLine=function(sub,pid,lid){
+  var box=CR.sub[sub+pid], SD=CR.SUB[sub]; if(!box||!box.lines) return null;
+  for(var i=0;i<box.lines.length;i++) if(String(SD.lid(box.lines[i]))===String(lid)) return box.lines[i];
+  return null;
+};
+CR.commitSub=function(sub,pid,lid,k,val,o){
+  o=o||{};
+  var SD=CR.SUB[sub], box=CR.sub[sub+pid], line=CR.subLine(sub,pid,lid), col=SD.cols[k];
+  if(!box||!line||!col) return Promise.resolve(false);
+  var old=col.get(line,box);
+  if(CR.same(old,val)){ CR.paintX(pid); return Promise.resolve(false); }
+  var bad=col.check?col.check(line,val,box):"";
+  if(bad){ MG.toast(bad,"err"); CR.paintX(pid); return Promise.resolve(false); }
+  var key=sub+"|"+pid+"|"+lid+"|"+k, snap=CR.clone(line), w=CR.t(col.h,{ c:box.ccy||"" })+" · "+SD.name(line);
+  var a=col.type==="money"?money(old):String(old);
+  col.local(line,val,box);
+  CR.cell[key]="saving"; CR.paintX(pid);
+  return SD.save(pid,line,k,val,box).then(function(lines){
+    if(lines && lines.length) box.lines=lines;
+    CR.cell[key]="ok"; CR.paintX(pid); CR.flash(key);
+    CR.addLog({ ent:SD.ent, id:pid, w:w, a:a, b:col.type==="money"?money(val):String(val), m:col.type==="money", ok:true, u:!!o.isUndo });
+    if(!o.isUndo) CR.setUndo({ sub:sub, pid:pid, lid:lid, k:k, val:old, w:w });
+    SD.after(pid);
+    return true;
+  }).catch(function(err){
+    CR.restore(line,snap); delete CR.cell[key]; CR.paintX(pid);
+    MG.fail(err);
+    CR.addLog({ ent:SD.ent, id:pid, w:w, a:a, b:String(val), ok:false, err:(err&&err.message)||"" });
+    return false;
+  });
+};
+
+/* ===================== entity definitions ===================== */
+CR.chOpts=function(){ return MG.CHANNELS.map(function(c){ return { v:c.id, l:c.label, ic:c.icon }; }); };
+CR.partyOpts=function(kind,cur){
+  return MG.cat.parties.filter(function(p){ return !kind || p.kind===kind || String(p.id)===String(cur); })
+    .map(function(p){ return { v:p.id, l:p.name+(kind?"":" · "+p.kind) }; });
+};
+CR.catOpts=function(){ return MG.cat.categories.map(function(c){ return { v:c.id, l:c.name, ic:"🏷️" }; }); };
+CR.typeOpts=function(){ return MG.cat.product_types.map(function(t){ return { v:t.id, l:t.name }; }); };
+CR.LANGS=[{ v:"English", l:"English", ic:"🇬🇧" },{ v:"Japanese", l:"Japanese", ic:"🇯🇵" },{ v:"Chinese", l:"Chinese", ic:"🇨🇳" },{ v:"Indonesia", l:"Indonesia", ic:"🇮🇩" }];
+CR.inRange=function(d,f){ d=String(d||"").slice(0,10); if(f.from && d<f.from) return false; if(f.to && d>f.to) return false; return true; };
+CR.idCol=function(icon){
+  return CR.C({ k:"id", h:"c.id", get:function(r){ return +r.id; }, v:function(r){ return +r.id; },
+    show:function(r){ return '<span class="cr-mut">'+(icon||"")+'#'+esc(r.id)+'</span>'; } });
+};
+CR.nul=function(v){ return (v==null||v==="")?null:v; };
+// generic "send {id, field:value}" saver for header-style update actions
+CR.upd=function(action,field,cast){
+  return function(r,v){
+    var b={ id:Number(r.id) }; b[field]=cast?cast(v):v;
+    return MG.api(action,b).then(function(){ return null; });
+  };
+};
+
+/* ---- Sales ---- */
+CR.su=function(field){
+  return function(r,v){
+    return MG.api("sales.update",{ id:Number(r.id), field:field, value:v }).then(function(d){
+      var s=(d||{}).sale, p={};
+      if(!s) return p;
+      ["quantity","unit_price_idr","total_idr"].forEach(function(k){ if(s[k]!=null) p[k]=+s[k]; });
+      ["sale_date","customer_name","notes","channel"].forEach(function(k){ if(s[k]!==undefined) p[k]=s[k]; });
+      return p;
+    });
+  };
+};
+CR.refreshCogs=function(r){
+  MG.api("sales.allocations",{ id:Number(r.id) }).then(function(d){
+    var al=arr((d||{}).allocations), t=0;
+    al.forEach(function(a){ t+=(+a.quantity||0)*(+a.cogs_per_unit_idr||0); });
+    r.cogs_total_idr=t; CR.sub["sale"+r.id]={ lines:al };
+    CR.paintRow("sales",r.id);
+  }).catch(function(){});
+};
+CR.E.sales={
+  sort:{ k:"sale_date", d:-1 },
+  fetch:function(){ return MG.api("sales.list",{ limit:100000 }).then(function(d){ return arr((d||{}).sales); }); },
+  hay:function(r){ return "#"+r.id+" "+MG.prodLabelById(r.product_id)+" "+(r.customer_name||"")+" "+(r.notes||"")+" "+(r.channel||"")+" "+(r.channel_order_id||"")+" "+(r.entered_by||"")+" "+(r.sale_date||""); },
+  test:function(r,f){
+    if(!CR.inRange(r.sale_date,f)) return false;
+    if(f.ch && (r.channel||"manual")!==f.ch) return false;
+    if(f.pid && String(r.product_id)!==String(f.pid)) return false;
+    if(f.cust && (r.customer_name||"").toLowerCase().indexOf(f.cust.toLowerCase().trim())<0) return false;
+    return true;
+  },
+  fbar:function(f){
+    var seen={}, prods=[];
+    CR.dat("sales").rows.forEach(function(r){ if(!seen[r.product_id]){ seen[r.product_id]=1; prods.push({ v:r.product_id, l:MG.prodLabelById(r.product_id) }); } });
+    prods.sort(function(a,b){ return a.l.localeCompare(b.l); });
+    return CR.fDates(f)+CR.fSel("ch",f.ch,CR.t("allch"),CR.chOpts().map(function(o){ return { v:o.v, l:o.ic+" "+o.l }; }))
+      +CR.fSel("pid",f.pid,CR.t("allprod"),prods)
+      +'<input class="inp cr-cust" type="search" data-f="cust" placeholder="'+esc(CR.t("customer"))+'" value="'+esc(f.cust||"")+'">';
+  },
+  sum:function(rows){
+    var u=0, rev=0, cg=0;
+    rows.forEach(function(r){ u+=+r.quantity||0; rev+=+r.total_idr||0; cg+=+r.cogs_total_idr||0; });
+    var m=rev>0?(rev-cg)/rev*100:null;
+    return [[num(u),CR.t("s.units")],[money(rev),CR.t("s.rev")],['<span class="'+marginClass(m)+'">'+money(rev-cg)+'</span>'+(m!=null?' · '+pct(m):''),CR.t("s.profit")]];
+  },
+  cols:[
+    CR.idCol(""),
+    CR.C({ k:"sale_date", h:"c.date", type:"date", save:CR.su("sale_date") }),
+    CR.C({ k:"product", h:"c.product", get:function(r){ return MG.prodLabelById(r.product_id); },
+      show:function(r){ return '<span class="cr-prod" title="'+esc(MG.prodLabelById(r.product_id))+'">🎴 '+esc(MG.prodLabelById(r.product_id))+'</span>'; } }),
+    CR.C({ k:"quantity", h:"c.qty", type:"int", stock:true, save:CR.su("quantity"),
+      confirm:function(r,v){ return MG.confirmBox(esc(CR.t("q.title")), esc(CR.t("q.body",{ id:r.id, a:num(r.quantity), b:num(v) })), esc(CR.t("q.ok"))); },
+      local:function(r,v){ r.quantity=v; r.total_idr=v*(+r.unit_price_idr||0); },
+      then:function(r){ CR.refreshCogs(r); } }),
+    CR.C({ k:"unit_price_idr", h:"c.unit", type:"money", save:CR.su("unit_price_idr"),
+      local:function(r,v){ r.unit_price_idr=v; r.total_idr=(+r.quantity||0)*v; } }),
+    CR.C({ k:"total_idr", h:"c.total", type:"money", save:CR.su("total_idr"),
+      local:function(r,v){ r.total_idr=v; r.unit_price_idr=(+r.quantity>0)?Math.round(v/(+r.quantity)*100)/100:0; } }),
+    CR.C({ k:"channel", h:"c.channel", type:"enum", opts:CR.chOpts, save:CR.su("channel"),
+      get:function(r){ return r.channel||"manual"; }, show:function(r){ return MG.chChip(r.channel||"manual"); } }),
+    CR.C({ k:"customer_name", h:"c.customer", type:"text", save:CR.su("customer_name") }),
+    CR.C({ k:"notes", h:"c.notes", type:"text", cls:"wide", save:CR.su("notes") }),
+    CR.C({ k:"cogs", h:"c.cogs", num:true, get:function(r){ return +r.cogs_total_idr||0; }, show:function(r){ return money(+r.cogs_total_idr||0); } }),
+    CR.C({ k:"profit", h:"c.profit", num:true, get:function(r){ return (+r.total_idr||0)-(+r.cogs_total_idr||0); },
+      show:function(r){ var t=+r.total_idr||0, p=t-(+r.cogs_total_idr||0), m=t>0?p/t*100:null;
+        return '<span class="'+marginClass(m)+'">'+money(p)+'</span>'+(m!=null?' <span class="cr-mut cr-sm">'+pct(m)+'</span>':''); } }),
+    CR.C({ k:"from_location", h:"c.loc", get:function(r){ return MG.locById(r.from_location).label; },
+      show:function(r){ var l=MG.locById(r.from_location); return '<span title="'+esc(l.label)+'">'+l.icon+'</span>'; } })
+  ],
+  bulk:function(){
+    return '<span class="lbl">'+esc(CR.t("b.channel"))+'</span>'
+      +MG.CHANNELS.map(function(c){
+        return '<button class="mg-btn sm" type="button" data-act="b" data-b="ch" data-v="'+c.id+'" style="color:'+c.color+';border-color:'+c.color+'55;">'+c.icon+' '+esc(c.label)+'</button>';
+      }).join("")
+      +'<span class="sep"></span>'
+      +'<button class="mg-btn sm" type="button" data-act="b" data-b="date">'+esc(CR.t("b.date"))+'</button>'
+      +'<button class="mg-btn sm" type="button" data-act="b" data-b="cust">'+esc(CR.t("b.cust"))+'</button>'
+      +'<button class="mg-btn sm danger" type="button" data-act="b" data-b="del">'+esc(CR.t("b.del"))+'</button>';
+  },
+  bulkRun:function(b,v,btn){
+    if(b==="ch") CR.bulkChannel(v);
+    else if(b==="date") CR.askSet(btn,"sales","sale_date");
+    else if(b==="cust") CR.askSet(btn,"sales","customer_name");
+    else if(b==="del") CR.bulkDelete("sales");
+  },
+  del:function(id){ return MG.api("sales.delete",{ id:Number(id) }); },
+  xLoad:function(r){
+    var key="sale"+r.id; if(CR.sub[key]) return;
+    CR.sub[key]={ loading:true, lines:[] };
+    MG.api("sales.allocations",{ id:Number(r.id) }).then(function(d){ CR.sub[key]={ lines:arr((d||{}).allocations) }; CR.paintX(r.id); })
+      .catch(function(e){ CR.sub[key]={ err:e.message, lines:[] }; CR.paintX(r.id); });
+  },
+  xBody:function(r){
+    var b=CR.sub["sale"+r.id], t=+r.total_idr||0, cg=+r.cogs_total_idr||0, p=t-cg, m=t>0?p/t*100:null, fifo;
+    if(!b||b.loading) fifo=MG.skel(3);
+    else if(b.err) fifo='<div class="cr-warn">'+esc(b.err)+'</div>';
+    else if(!b.lines.length) fifo='<div class="cr-warn">'+esc(CR.t("x.noalloc"))+'</div>';
+    else fifo='<div class="cr-subwrap"><table class="cr-sub"><thead><tr><th class="l">'+esc(CR.t("c.batch"))+'</th><th class="l">'+esc(CR.t("x.inv"))+'</th>'
+      +'<th class="r">'+esc(CR.t("c.qty"))+'</th><th class="r">'+esc(CR.t("x.cogs"))+'/u</th><th class="r">'+esc(CR.t("x.cogs"))+'</th></tr></thead><tbody>'
+      +b.lines.map(function(a){
+        return '<tr><td class="l">🚚 '+esc(a.shipment_label||("#"+a.shipment_id))+(a.shipment_date?' <span class="cr-mut">'+esc(MG.dstr(a.shipment_date))+'</span>':'')
+          +(a.product_id!=null && String(a.product_id)!==String(r.product_id)?'<div class="cr-mut cr-sm">🎴 '+esc(MG.prodLabelById(a.product_id))+'</div>':'')+'</td>'
+          +'<td class="l">'+(a.invoice_id?'🧾 #'+esc(a.invoice_id)+(a.supplier?' · '+esc(a.supplier):''):'—')+'</td>'
+          +'<td class="r num">'+num(a.quantity)+'</td><td class="r num">'+money(a.cogs_per_unit_idr)+'</td>'
+          +'<td class="r num">'+money((+a.quantity||0)*(+a.cogs_per_unit_idr||0))+'</td></tr>';
+      }).join("")+'</tbody></table></div>';
+    var loc=MG.locById(r.from_location);
+    return CR.panel(CR.t("x.details"), CR.kv("sales",r,["sale_date","quantity","unit_price_idr","total_idr","channel","customer_name","notes"],[
+        [CR.t("x.loc"), loc.icon+" "+esc(loc.label)],
+        r.channel_order_id?[CR.t("x.order"),'<code>'+esc(r.channel_order_id)+'</code>']:null,
+        r.entered_by?[CR.t("x.by"),"✍️ "+esc(r.entered_by)]:null ]))
+      +CR.panel(CR.t("x.fifo"), '<div class="cr-stats">'+CR.stat(CR.t("x.cogs"),money(cg))
+          +CR.stat(CR.t("x.profit"),'<span class="'+marginClass(m)+'">'+money(p)+'</span>')+CR.stat(CR.t("x.margin"),m==null?"—":pct(m))+'</div>'
+        +fifo+'<div class="cr-note">'+esc(CR.t("x.fifohint"))+'</div>');
+  }
+};
+
+/* ---- Expenses ---- */
+CR.eu=function(field,cast){ return CR.upd("expenses.update",field,cast); };
+CR.E.expenses={
+  sort:{ k:"date", d:-1 },
+  fetch:function(){ return MG.api("expenses.list",{ limit:20000 }).then(function(d){ return arr((d||{}).expenses); }); },
+  hay:function(r){ return "#"+r.id+" "+(r.category_name||"")+" "+(r.from_name||"")+" "+(r.to_name||"")+" "+(r.description||"")+" "+(r.notes||"")+" "+(r.date||""); },
+  test:function(r,f){
+    if(!CR.inRange(r.date,f)) return false;
+    if(f.cat && String(r.category_id)!==String(f.cat)) return false;
+    return true;
+  },
+  fbar:function(f){ return CR.fDates(f)+CR.fSel("cat",f.cat,CR.t("allcat"),CR.catOpts()); },
+  sum:function(rows){ var t=0; rows.forEach(function(r){ t+=+r.amount_idr||0; }); return [[money(t),CR.t("s.total")]]; },
+  cols:[
+    CR.idCol(""),
+    CR.C({ k:"date", h:"c.date", type:"date", save:CR.eu("date") }),
+    CR.C({ k:"category_id", h:"c.category", type:"enum", opts:CR.catOpts, save:CR.eu("category_id",Number),
+      show:function(r){ return "🏷️ "+esc(r.category_name||MG.catName(r.category_id)); },
+      local:function(r,v){ r.category_id=Number(v); r.category_name=MG.catName(v); } }),
+    CR.C({ k:"amount_idr", h:"c.amount", type:"money", save:CR.eu("amount_idr") }),
+    CR.C({ k:"from_party_id", h:"c.from", type:"enum", opts:function(){ return CR.partyOpts(); }, save:CR.eu("from_party_id",Number),
+      show:function(r){ return esc(r.from_name||MG.partyName(r.from_party_id)); },
+      local:function(r,v){ r.from_party_id=Number(v); r.from_name=MG.partyName(v); } }),
+    CR.C({ k:"to_party_id", h:"c.to", type:"enum", opts:function(){ return CR.partyOpts(); }, save:CR.eu("to_party_id",Number),
+      show:function(r){ return esc(r.to_name||MG.partyName(r.to_party_id)); },
+      local:function(r,v){ r.to_party_id=Number(v); r.to_name=MG.partyName(v); } }),
+    CR.C({ k:"description", h:"c.desc", type:"text", cls:"wide", save:CR.eu("description",CR.nul) }),
+    CR.C({ k:"notes", h:"c.notes", type:"text", cls:"wide", save:CR.eu("notes",CR.nul) })
+  ],
+  bulk:function(){
+    return '<button class="mg-btn sm" type="button" data-act="b" data-b="cat">'+esc(CR.t("b.cat"))+'</button>'
+      +'<button class="mg-btn sm" type="button" data-act="b" data-b="date">'+esc(CR.t("b.date"))+'</button>'
+      +'<span class="sep"></span>'
+      +'<button class="mg-btn sm danger" type="button" data-act="b" data-b="del">'+esc(CR.t("b.del"))+'</button>';
+  },
+  bulkRun:function(b,v,btn){
+    if(b==="cat") CR.askSet(btn,"expenses","category_id");
+    else if(b==="date") CR.askSet(btn,"expenses","date");
+    else if(b==="del") CR.bulkDelete("expenses");
+  },
+  del:function(id){ return MG.api("expenses.delete",{ id:Number(id) }); },
+  xBody:function(r){
+    return '<div class="full">'+CR.panel(CR.t("x.details"), CR.kv("expenses",r,["date","category_id","amount_idr","from_party_id","to_party_id","description","notes"],[
+      r.invoice_id?[CR.t("x.inv"),"🧾 #"+esc(r.invoice_id)]:null ]))+'</div>';
+  }
+};
+
+/* ---- Invoices ---- */
+CR.payKey=function(r){ var s=(r.payments||{}).payment_status; return s==="fully_paid"?"paid":((s==="partial"||s==="dp_paid")?"partial":"unpaid"); };
+CR.shipKey=function(r){ return MG.invoices.shipKey(r); };
+CR.payChip=function(k){
+  if(k==="paid") return CR.chip(CR.hex.green,"✅ "+esc(CR.t("st.paid")));
+  if(k==="partial") return CR.chip(CR.hex.amber,"🟡 "+esc(CR.t("st.partial")));
+  return CR.chip(CR.hex.red,"💸 "+esc(CR.t("st.unpaid")));
+};
+CR.shipChip=function(k){
+  if(k==="fully_shipped") return CR.chip(CR.hex.green,"🏠 "+esc(CR.t("st.shipped")));
+  if(k==="partial") return CR.chip(CR.hex.amber,"🚚 "+esc(CR.t("st.pship")));
+  if(k==="closed_with_shortage") return CR.chip(CR.hex.muted,"🔒 "+esc(CR.t("st.closed")));
+  return CR.chip(CR.hex.red,"⏳ "+esc(CR.t("st.unshipped")));
+};
+CR.iu=function(field,cast){ return CR.upd("invoices.update",field,cast); };
+CR.natMoney=function(v,ccy){ return (v==null||v==="")?"—":(ccy==="IDR"?money(v):dec(v,2)+" "+esc(ccy||"")); };
+CR.E.invoices={
+  sort:{ k:"invoice_date", d:-1 },
+  fetch:function(){ return MG.api("invoices.list",{ limit:5000 }).then(function(d){ return arr((d||{}).invoices); }); },
+  hay:function(r){ return "#"+r.id+" "+(r.supplier_name||MG.partyName(r.supplier_id))+" "+(r.invoice_date||"")+" "+(r.currency||"")+" "+(r.notes||""); },
+  test:function(r,f){
+    if(f.sup && String(r.supplier_id)!==String(f.sup)) return false;
+    if(f.pay && CR.payKey(r)!==f.pay) return false;
+    if(f.ship && CR.shipKey(r)!==f.ship) return false;
+    return true;
+  },
+  fbar:function(f){
+    var seen={}, sups=[];
+    CR.dat("invoices").rows.forEach(function(r){ if(!seen[r.supplier_id]){ seen[r.supplier_id]=1; sups.push({ v:r.supplier_id, l:r.supplier_name||MG.partyName(r.supplier_id) }); } });
+    sups.sort(function(a,b){ return String(a.l).localeCompare(String(b.l)); });
+    return CR.fSel("sup",f.sup,CR.t("allsup"),sups)
+      +CR.fSel("pay",f.pay,CR.t("allpay"),[{ v:"unpaid", l:"💸 "+CR.t("st.unpaid") },{ v:"partial", l:"🟡 "+CR.t("st.partial") },{ v:"paid", l:"✅ "+CR.t("st.paid") }])
+      +CR.fSel("ship",f.ship,CR.t("allship"),[{ v:"unshipped", l:"⏳ "+CR.t("st.unshipped") },{ v:"partial", l:"🚚 "+CR.t("st.pship") },
+        { v:"fully_shipped", l:"🏠 "+CR.t("st.shipped") },{ v:"closed_with_shortage", l:"🔒 "+CR.t("st.closed") }]);
+  },
+  sum:function(rows){
+    var t=0, pd=0, out=0;
+    rows.forEach(function(r){ var p=r.payments||{}; t+=+p.total_idr||0; pd+=+p.paid_idr||0; if(r.currency==="IDR") out+=Math.max(0,+p.outstanding_native||0); });
+    return [[money(t),CR.t("s.total")],[money(pd),CR.t("s.paid")],[money(out),CR.t("s.out")]];
+  },
+  cols:[
+    CR.idCol("🧾 "),
+    CR.C({ k:"supplier_id", h:"c.supplier", type:"enum", save:CR.iu("supplier_id",Number),
+      opts:function(r){ var o=CR.partyOpts("supplier",r&&r.supplier_id); return o.length?o:CR.partyOpts(); },
+      show:function(r){ return "👤 "+esc(r.supplier_name||MG.partyName(r.supplier_id)); },
+      local:function(r,v){ r.supplier_id=Number(v); r.supplier_name=MG.partyName(v); } }),
+    CR.C({ k:"invoice_date", h:"c.date", type:"date", save:CR.iu("invoice_date") }),
+    CR.C({ k:"currency", h:"c.ccy" }),
+    CR.C({ k:"total", h:"c.totalidr", num:true, get:function(r){ return +((r.payments||{}).total_idr)||0; }, show:function(r){ return money(+((r.payments||{}).total_idr)||0); } }),
+    CR.C({ k:"paid", h:"c.paid", num:true, get:function(r){ return +((r.payments||{}).paid_idr)||0; }, show:function(r){ return money(+((r.payments||{}).paid_idr)||0); } }),
+    CR.C({ k:"outstanding", h:"c.out", num:true, get:function(r){ return +((r.payments||{}).outstanding_native)||0; },
+      show:function(r){ return CR.natMoney((r.payments||{}).outstanding_native,r.currency); } }),
+    CR.C({ k:"ship", h:"c.ship", get:CR.shipKey, csv:function(r){ return CR.shipKey(r); }, show:function(r){ return CR.shipChip(CR.shipKey(r)); } }),
+    CR.C({ k:"pay", h:"c.pay", get:CR.payKey, csv:function(r){ return CR.payKey(r); }, show:function(r){ return CR.payChip(CR.payKey(r)); } }),
+    CR.C({ k:"notes", h:"c.notes", type:"text", cls:"wide", save:CR.iu("notes") })
+  ],
+  xLoad:function(r,quiet){
+    var key="inv"+r.id; if(CR.sub[key] && !quiet) return;
+    if(!quiet) CR.sub[key]={ loading:true, lines:[] };
+    MG.api("invoices.get",{ id:Number(r.id) }).then(function(d){
+      d=d||{};
+      var inv=d.invoice||{}, lines=arr(d.lines), ful={}, rate=0;
+      arr(d.line_fulfillment).forEach(function(f){ ful[f.invoice_line_id]=f; });
+      lines.forEach(function(l){ if(!rate && +l.cost_per_unit>0 && +l.cost_per_unit_idr>0) rate=(+l.cost_per_unit_idr)/(+l.cost_per_unit); });
+      CR.sub[key]={ inv:inv, ccy:inv.currency||r.currency||"IDR", lines:lines, ful:ful, rate:rate, pay:d.payments||{}, pays:arr(d.payment_transactions) };
+      CR.paintX(r.id);
+    }).catch(function(e){ if(!quiet){ CR.sub[key]={ err:e.message, lines:[] }; CR.paintX(r.id); } });
+  },
+  xBody:function(r){
+    var b=CR.sub["inv"+r.id], k=CR.shipKey(r), lines, pays;
+    var head=CR.kv("invoices",r,["supplier_id","invoice_date","notes"],[[CR.t("c.ccy"),esc(r.currency||"—")],[CR.t("c.ship"),CR.shipChip(k)],[CR.t("c.pay"),CR.payChip(CR.payKey(r))]]);
+    if(!b||b.loading){ lines=MG.skel(4); pays=""; }
+    else if(b.err){ lines='<div class="cr-warn">'+esc(b.err)+'</div>'; pays=""; }
+    else {
+      var ccy=b.ccy, ext=ccy!=="IDR", pid=r.id;
+      var th='<thead><tr><th class="l">'+esc(CR.t("c.product"))+'</th><th class="r">'+esc(CR.t("c.ordered"))+'</th><th class="r">'+esc(CR.t("c.shipped"))+'</th><th class="r">'+esc(CR.t("c.open"))+'</th>'
+        +(ext?'<th class="r">'+esc(CR.t("c.costn",{ c:ccy }))+'</th>':'')+'<th class="r">'+esc(CR.t("c.costi"))+'</th><th class="r">'+esc(CR.t("c.linet"))+'</th></tr></thead>';
+      lines=b.lines.length?'<div class="cr-subwrap"><table class="cr-sub">'+th+'<tbody>'+b.lines.map(function(l){
+        var f=b.ful[l.id]||{}, sh=+f.quantity_shipped||0, q=+l.quantity_ordered||0, open=(f.closed_short||l.closed_short)?0:Math.max(0,q-sh);
+        return '<tr><td class="l">🎴 '+esc(MG.prodLabelById(l.product_id))+'</td>'
+          +CR.subCell("inv",pid,l,"quantity_ordered",b)
+          +'<td class="r num">'+num(sh)+'</td><td class="r num">'+(open?num(open):CR.dash)+'</td>'
+          +(ext?CR.subCell("inv",pid,l,"cost_per_unit",b):'')
+          +CR.subCell("inv",pid,l,"cost_per_unit_idr",b)
+          +'<td class="r num">'+money(q*(+l.cost_per_unit_idr||0))+'</td></tr>';
+      }).join("")+'</tbody></table></div>':'<div class="cr-mut">'+esc(CR.t("x.nolines"))+'</div>';
+      lines+='<div class="cr-note">'+esc(CR.t("x.lineshint"))+'</div>';
+      var P=b.pay||{};
+      pays='<div class="cr-ph" style="margin-top:12px;">'+esc(CR.t("x.pay"))+'</div>'
+        +'<div class="cr-stats">'+CR.stat(CR.t("x.total"),CR.natMoney(P.total_native,ccy))+(ext?CR.stat(CR.t("c.totalidr"),money(P.total_idr)):'')
+        +CR.stat(CR.t("x.paid"),money(P.paid_idr))+CR.stat(CR.t("x.out"),CR.natMoney(P.outstanding_native,ccy))+'</div>'
+        +(b.pays.length?'<div class="cr-pays">'+b.pays.map(function(p){
+          return '<div><span>📅 '+esc(MG.dstr(p.paid_date||p.date))+(p.description||p.notes?' · <span class="cr-mut">'+esc(p.description||p.notes)+'</span>':'')+'</span>'
+            +'<b class="num">'+money(p.amount_idr)+(ext&&p.amount_native!=null?' <span class="cr-mut cr-sm">('+dec(p.amount_native,2)+' '+esc(ccy)+')</span>':'')+'</b></div>';
+        }).join("")+'</div>':'<div class="cr-mut" style="font-size:12.5px;">'+esc(CR.t("x.nopay"))+'</div>');
+    }
+    return CR.panel(CR.t("x.details"), head+pays)+CR.panel(CR.t("x.lines"), lines);
+  }
+};
+CR.lineRate=function(l,box){
+  if(+l.cost_per_unit>0 && +l.cost_per_unit_idr>0) return (+l.cost_per_unit_idr)/(+l.cost_per_unit);
+  return box.ccy==="IDR"?1:(box.rate||0);
+};
+CR.SUB.inv={
+  ent:"invoices",
+  lid:function(l){ return l.id; },
+  name:function(l){ return MG.prodLabelById(l.product_id); },
+  cols:{
+    quantity_ordered:{ h:"c.ordered", type:"int", get:function(l){ return +l.quantity_ordered; }, local:function(l,v){ l.quantity_ordered=v; },
+      check:function(l,v,box){ var s=+((box.ful[l.id]||{}).quantity_shipped)||0; return v<s?CR.t("e.ship",{ n:num(s) }):""; } },
+    cost_per_unit:{ h:"c.costn", type:"dec", get:function(l){ return +l.cost_per_unit; },
+      local:function(l,v,box){ var rt=CR.lineRate(l,box); l.cost_per_unit=v; if(rt) l.cost_per_unit_idr=Math.round(v*rt*100)/100; } },
+    cost_per_unit_idr:{ h:"c.costi", type:"money", get:function(l){ return +l.cost_per_unit_idr; },
+      local:function(l,v,box){ l.cost_per_unit_idr=v; if(box.ccy==="IDR") l.cost_per_unit=v; } }
+  },
+  save:function(pid,line,k,v){
+    var u={ id:Number(line.id) };
+    if(k==="quantity_ordered") u.quantity_ordered=v;
+    else { u.cost_per_unit=+line.cost_per_unit; u.cost_per_unit_idr=+line.cost_per_unit_idr; }
+    return MG.api("invoices.update",{ id:Number(pid), update_lines:[u] }).then(function(d){ return arr((d||{}).lines); });
+  },
+  after:function(pid){
+    var r=CR.find("invoices",pid); if(r) CR.E.invoices.xLoad(r,true);
+    CR.load("invoices",true,true); CR.after("invoices",true);
+  }
+};
+
+/* ---- Shipments ---- */
+CR.shu=function(field,cast){ return CR.upd("shipments.update",field,cast); };
+CR.shipStChip=function(s){
+  return s==="in_warehouse"?CR.chip(CR.hex.green,"🏠 "+esc(CR.t("st.arrived"))):CR.chip(CR.hex.amber,"🚚 "+esc(CR.t("st.transit")));
+};
+CR.units=function(r){ var u=0; arr(r.lines).forEach(function(l){ u+=+l.quantity||0; }); return u; };
+CR.E.shipments={
+  sort:{ k:"shipment_date", d:-1 },
+  fetch:function(){ return MG.api("shipments.list",{ limit:5000 }).then(function(d){ return arr((d||{}).shipments); }); },
+  hay:function(r){ return "#"+r.id+" "+(r.label||"")+" "+(r.shipment_date||"")+" "+(r.notes||"")+" "+(r.stock_status||""); },
+  test:function(r,f){ if(f.st && r.stock_status!==f.st) return false; return CR.inRange(r.shipment_date,f); },
+  fbar:function(f){
+    return CR.fSel("st",f.st,CR.t("allst"),[{ v:"in_transit", l:"🚚 "+CR.t("st.transit") },{ v:"in_warehouse", l:"🏠 "+CR.t("st.arrived") }]);
+  },
+  sum:function(rows){
+    var u=0, c=0; rows.forEach(function(r){ u+=CR.units(r); c+=+r.shipping_cost_idr||0; });
+    return [[num(u),CR.t("s.units")],[money(c),CR.t("s.cost")]];
+  },
+  cols:[
+    CR.idCol("📦 "),
+    CR.C({ k:"label", h:"c.label", type:"text", cls:"wide", save:CR.shu("label") }),
+    CR.C({ k:"shipment_date", h:"c.date", type:"date", save:CR.shu("shipment_date") }),
+    CR.C({ k:"shipping_cost_idr", h:"c.cost", type:"money", stock:true, save:CR.shu("shipping_cost_idr") }),
+    CR.C({ k:"stock_status", h:"c.status", type:"enum", noUndo:true, stock:true,
+      edit:function(r){ return r.stock_status==="in_transit"; },
+      opts:function(){ return [{ v:"in_transit", l:CR.t("st.transit"), ic:"🚚" },{ v:"in_warehouse", l:CR.t("st.arrived"), ic:"🏠" }]; },
+      show:function(r){ return CR.shipStChip(r.stock_status); },
+      confirm:function(r){ return MG.confirmBox(esc(CR.t("arr.title",{ id:r.id })), esc(CR.t("arr.body")), esc(CR.t("arr.ok"))); },
+      local:function(r,v){ r.stock_status=v; if(v==="in_warehouse" && !r.arrived_date) r.arrived_date=MG.today(); },
+      save:function(r,v){
+        if(v!=="in_warehouse") return Promise.reject(new Error("Only in transit → arrived is supported here"));
+        return MG.api("shipments.arrive",{ id:Number(r.id), arrived_date:MG.today() }).then(function(d){
+          var s=(d||{}).shipment||{}; return { stock_status:s.stock_status||"in_warehouse", arrived_date:s.arrived_date||MG.today() };
+        });
+      } }),
+    CR.C({ k:"arrived_date", h:"c.arrived", type:"date", edit:function(r){ return r.stock_status==="in_warehouse"; }, save:CR.shu("arrived_date") }),
+    CR.C({ k:"nlines", h:"c.lines", num:true, get:function(r){ return arr(r.lines).length; }, show:function(r){ return num(arr(r.lines).length); } }),
+    CR.C({ k:"units", h:"c.units", num:true, get:CR.units, show:function(r){ return num(CR.units(r)); } }),
+    CR.C({ k:"notes", h:"c.notes", type:"text", cls:"wide", save:CR.shu("notes") })
+  ],
+  xLoad:function(r,quiet){
+    var key="shp"+r.id; if(CR.sub[key] && !quiet) return;
+    if(!quiet) CR.sub[key]={ loading:true, lines:[] };
+    MG.api("shipments.get",{ id:Number(r.id) }).then(function(d){
+      d=d||{};
+      CR.sub[key]={ lines:arr(d.lines), legs:arr(d.leg_allocations) };
+      CR.paintX(r.id);
+    }).catch(function(e){ if(!quiet){ CR.sub[key]={ err:e.message, lines:[] }; CR.paintX(r.id); } });
+  },
+  xBody:function(r){
+    var b=CR.sub["shp"+r.id], lines;
+    if(!b||b.loading) lines=MG.skel(4);
+    else if(b.err) lines='<div class="cr-warn">'+esc(b.err)+'</div>';
+    else if(!b.lines.length) lines='<div class="cr-mut">'+esc(CR.t("x.nolines"))+'</div>';
+    else lines='<div class="cr-subwrap"><table class="cr-sub"><thead><tr><th class="l">'+esc(CR.t("c.product"))+'</th><th class="l">'+esc(CR.t("x.inv"))+'</th>'
+      +'<th class="r">'+esc(CR.t("c.qty"))+'</th><th class="r">'+esc(CR.t("c.buy"))+'</th><th class="r">'+esc(CR.t("c.shipu"))+'</th><th class="r">'+esc(CR.t("c.landed"))+'</th></tr></thead><tbody>'
+      +b.lines.map(function(l){
+        var buy=+l.cost_per_unit_idr||0, land=+l.landed_cost_per_unit_idr||0;
+        return '<tr><td class="l">🎴 '+esc(MG.prodLabelById(l.product_id))+'</td><td class="l">'+(l.invoice_id!=null?'🧾 #'+esc(l.invoice_id):'—')+'</td>'
+          +CR.subCell("shp",r.id,l,"quantity",b)
+          +'<td class="r num">'+money(buy)+'</td><td class="r num">'+money(land-buy)+'</td><td class="r num">'+money(land)+'</td></tr>';
+      }).join("")+'</tbody></table></div><div class="cr-note">'+esc(CR.t("x.shiplineshint"))+'</div>';
+    var legs=(b&&b.legs&&b.legs.length)?[[CR.t("x.legs"),num(b.legs.length)]]:[];
+    return CR.panel(CR.t("x.details"), CR.kv("shipments",r,["label","shipment_date","shipping_cost_idr","stock_status","arrived_date","notes"],legs))
+      +CR.panel(CR.t("x.lines"), lines);
+  }
+};
+CR.SUB.shp={
+  ent:"shipments",
+  lid:function(l){ return l.shipment_line_id; },
+  name:function(l){ return MG.prodLabelById(l.product_id); },
+  cols:{
+    quantity:{ h:"c.qty", type:"int", get:function(l){ return +l.quantity; }, local:function(l,v){ l.quantity=v; } }
+  },
+  save:function(pid,line,k,v,box){
+    var inv={}; box.lines.forEach(function(l){ inv[l.shipment_line_id]=l.invoice_id; });
+    return MG.api("shipments.update",{ id:Number(pid), update_lines:[{ id:Number(line.shipment_line_id), quantity:v }] }).then(function(d){
+      return arr((d||{}).lines).map(function(l){ if(l.invoice_id==null) l.invoice_id=inv[l.shipment_line_id]; return l; });
+    });
+  },
+  after:function(){ CR.load("shipments",true,true); CR.after("shipments",true); }
+};
+
+/* ---- Products & stock ---- */
+CR.pu=function(field,cast){ return CR.upd("products.update",field,cast); };
+CR.sk=function(r,f){ return +(MG.stockOf(r.id)[f])||0; };
+CR.sellable=function(r){ return CR.sk(r,"in_warehouse")+CR.sk(r,"in_store"); };
+CR.gProd=function(id){
+  if(typeof products==="undefined") return null;
+  for(var i=0;i<products.length;i++) if(String(products[i].productId)===String(id)) return products[i];
+  return null;
+};
+CR.stockCol=function(k,h,f){ return CR.C({ k:k, h:h, num:true, get:function(r){ return CR.sk(r,f); },
+  show:function(r){ var n=CR.sk(r,f); return n?num(n):'<span class="cr-mut">0</span>'; } }); };
+CR.E.products={
+  sort:{ k:"set_name", d:1 },
+  fetch:function(force){ return MG.loadCatalog(force).then(function(){ return MG.cat.products; }); },
+  hay:function(r){ return "#"+r.id+" "+MG.prodLabel(r)+" "+(r.sku||""); },
+  rowCls:function(r){ return r.is_active===false?" cr-dim":""; },
+  test:function(r,f){
+    if(f.type && String(r.product_type_id)!==String(f.type)) return false;
+    if(f.lang && MG.normLang(r.language)!==f.lang) return false;
+    if(f.act==="on" && r.is_active===false) return false;
+    if(f.act==="off" && r.is_active!==false) return false;
+    if(f.stk==="in" && !(CR.sellable(r)>0)) return false;
+    if(f.stk==="out" && CR.sellable(r)>0) return false;
+    return true;
+  },
+  fbar:function(f){
+    return CR.fSel("type",f.type,CR.t("alltype"),CR.typeOpts())
+      +CR.fSel("lang",f.lang,CR.t("alllang"),CR.LANGS.map(function(o){ return { v:o.v, l:o.ic+" "+o.l }; }))
+      +CR.fSel("act",f.act,CR.t("allact"),[{ v:"on", l:"✅ "+CR.t("f.on") },{ v:"off", l:"⛔ "+CR.t("f.off") }])
+      +CR.fSel("stk",f.stk,CR.t("allstock"),[{ v:"in", l:"🏠 "+CR.t("f.in") },{ v:"out", l:"∅ "+CR.t("f.out") }]);
+  },
+  sum:function(rows){
+    var u=0, val=0;
+    rows.forEach(function(r){ var s=CR.sellable(r); u+=s; val+=s*(+MG.stockOf(r.id).avg_landed_cost_idr||0); });
+    return [[num(u),CR.t("s.stock")],[money(val),CR.t("s.value")]];
+  },
+  hint:"hint.p",
+  cols:[
+    CR.idCol(""),
+    CR.C({ k:"set_name", h:"c.name", type:"text", req:true, cls:"wide", save:CR.pu("set_name") }),
+    CR.C({ k:"language", h:"c.lang", type:"enum", opts:function(){ return CR.LANGS; }, save:CR.pu("language"),
+      get:function(r){ return MG.normLang(r.language); } }),
+    CR.C({ k:"product_type_id", h:"c.type", type:"enum", opts:CR.typeOpts, save:CR.pu("product_type_id",Number),
+      show:function(r){ return esc(r.type_name||MG.typeName(r.product_type_id)||"—"); },
+      local:function(r,v){ r.product_type_id=Number(v); r.type_name=MG.typeName(v); } }),
+    CR.C({ k:"sale_price_idr", h:"c.price", type:"money", nullable:true, save:CR.pu("sale_price_idr") }),
+    CR.C({ k:"sku", h:"c.sku", type:"text", save:CR.pu("sku",CR.nul) }),
+    CR.C({ k:"is_active", h:"c.active", type:"enum", save:CR.pu("is_active",function(v){ return String(v)==="1"; }),
+      opts:function(){ return [{ v:"1", l:CR.t("yes"), ic:"✅" },{ v:"0", l:CR.t("no"), ic:"⛔" }]; },
+      get:function(r){ return r.is_active===false?"0":"1"; },
+      show:function(r){ return r.is_active===false?CR.chip(CR.hex.muted,"⛔ "+esc(CR.t("no"))):CR.chip(CR.hex.green,"✅ "+esc(CR.t("yes"))); },
+      local:function(r,v){ r.is_active=String(v)==="1"; } }),
+    CR.stockCol("wh","c.wh","in_warehouse"),
+    CR.stockCol("st","c.st","in_store"),
+    CR.stockCol("tr","c.tr","in_transit"),
+    CR.stockCol("oo","c.oo","on_order"),
+    CR.stockCol("total","c.stock","total"),
+    CR.C({ k:"avg", h:"c.avg", num:true, get:function(r){ return +MG.stockOf(r.id).avg_landed_cost_idr||0; },
+      show:function(r){ var v=+MG.stockOf(r.id).avg_landed_cost_idr||0; return v?money(v):CR.dash; } }),
+    CR.C({ k:"units_sold", h:"c.sold", num:true, get:function(r){ return +r.units_sold||0; }, show:function(r){ return num(+r.units_sold||0); } })
+  ],
+  bulk:function(){
+    return '<button class="mg-btn sm" type="button" data-act="b" data-b="on">'+esc(CR.t("b.on"))+'</button>'
+      +'<button class="mg-btn sm" type="button" data-act="b" data-b="off">'+esc(CR.t("b.off"))+'</button>'
+      +'<span class="sep"></span>'
+      +'<button class="mg-btn sm" type="button" data-act="b" data-b="price">'+esc(CR.t("b.price"))+'</button>'
+      +'<button class="mg-btn sm" type="button" data-act="b" data-b="type">'+esc(CR.t("b.type"))+'</button>';
+  },
+  bulkRun:function(b,v,btn){
+    if(b==="on") CR.bulkSet("products","is_active","1");
+    else if(b==="off") CR.bulkSet("products","is_active","0");
+    else if(b==="price") CR.askSet(btn,"products","sale_price_idr");
+    else if(b==="type") CR.askSet(btn,"products","product_type_id");
+  },
+  xBody:function(r){
+    var s=MG.stockOf(r.id), g=CR.gProd(r.id);
+    var stock='<div class="cr-stats">'+CR.stat("🏠 "+CR.t("c.wh").split(" ").slice(1).join(" "),num(s.in_warehouse||0))
+      +CR.stat("🏬 "+CR.t("c.st").split(" ").slice(1).join(" "),num(s.in_store||0))
+      +CR.stat("🚚 "+CR.t("c.tr").split(" ").slice(1).join(" "),num(s.in_transit||0))
+      +CR.stat("⏳ "+CR.t("c.oo").split(" ").slice(1).join(" "),num(s.on_order||0))
+      +CR.stat(CR.t("c.avg"),s.avg_landed_cost_idr?money(s.avg_landed_cost_idr):"—")+'</div>'
+      +'<div class="cr-note" style="margin:0 0 10px;">🔒 '+esc(CR.t("x.stockhint"))+'</div>'
+      +'<div class="cr-ph">'+esc(CR.t("x.batches"))+'</div>'
+      +((g && typeof batchTable==="function")?batchTable(g):'<div class="cr-mut" style="font-size:12.5px;">'+esc(CR.t("x.nobatch"))+'</div>');
+    return CR.panel(CR.t("x.details"), CR.kv("products",r,["set_name","language","product_type_id","sale_price_idr","sku","is_active"],[
+        r.weight_grams!=null?[CR.t("x.weight"),num(r.weight_grams)+" g"]:null,
+        [CR.t("c.sold"),'<span class="num">'+num(+r.units_sold||0)+'</span>'],
+        [CR.t("x.rev"),'<span class="num">'+money(+r.sales_revenue_idr||0)+'</span>'] ]))
+      +CR.panel(CR.t("x.stock"), stock);
+  }
+};
+
+/* ===================== rendering ===================== */
+CR.panel=function(title,body){ return '<div class="cr-panel"><div class="cr-ph">'+esc(title)+'</div>'+body+'</div>'; };
+CR.stat=function(label,valHtml){ return '<div class="cr-stat"><span>'+esc(label)+'</span><b class="num">'+valHtml+'</b></div>'; };
+CR.cellAttr=function(ent,r,c){
+  var ed=CR.canEdit(c,r), key=CR.ckey(ent,r.id,c.k), st=CR.cell[key]||"";
+  return ' class="cr-c '+c.al+(ed?' ed':' ro')+(CR.isNum(c)?' num':'')+(st?' '+st:'')+(c.cls?' '+c.cls:'')+'"'
+    +' data-id="'+esc(r.id)+'" data-k="'+c.k+'" data-ck="'+esc(key)+'" tabindex="-1"';
+};
+// Editable key/value list for an expanded row (same cells, same editor as the grid).
+CR.kv=function(ent,r,keys,extra){
+  var h='<div class="cr-kv">';
+  keys.forEach(function(k){ var c=CR.col(ent,k); if(c) h+='<div class="k">'+esc(CR.t(c.h,c.hv))+'</div><div'+CR.cellAttr(ent,r,c)+'>'+c.show(r)+'</div>'; });
+  (extra||[]).forEach(function(p){ if(p) h+='<div class="k">'+esc(p[0])+'</div><div class="cr-c ro l">'+p[1]+'</div>'; });
+  return h+'</div>';
+};
+CR.subCell=function(sub,pid,line,k,box){
+  var SD=CR.SUB[sub], c=SD.cols[k], lid=SD.lid(line), key=sub+"|"+pid+"|"+lid+"|"+k, st=CR.cell[key]||"";
+  return '<td class="cr-c r num ed'+(st?' '+st:'')+'" data-sub="'+sub+'" data-pid="'+esc(pid)+'" data-lid="'+esc(lid)+'" data-k="'+k+'" data-ck="'+esc(key)+'" tabindex="-1">'
+    +CR.fmt(c,c.get(line,box))+'</td>';
+};
+CR.fSel=function(k,cur,allLbl,opts){
+  return '<select class="dd" data-f="'+k+'"><option value="">'+esc(allLbl)+'</option>'
+    +opts.map(function(o){ return '<option value="'+esc(o.v)+'"'+(String(o.v)===String(cur||"")?' selected':'')+'>'+esc(o.l)+'</option>'; }).join("")+'</select>';
+};
+CR.PRESETS=["today","7","30","month","all"];
+CR.presetRange=function(x){
+  var t=MG.today();
+  if(x==="today") return [t,t];
+  if(x==="7") return [MG.daysAgo(6),t];
+  if(x==="30") return [MG.daysAgo(29),t];
+  if(x==="month") return [t.slice(0,8)+"01",t];
+  return ["",""];
+};
+CR.fDates=function(f){
+  var p="";
+  CR.PRESETS.forEach(function(x){ var r=CR.presetRange(x); if(!p && (f.from||"")===r[0] && (f.to||"")===r[1]) p=x; });
+  return '<input class="inp cr-d" type="date" data-f="from" value="'+esc(f.from||"")+'" title="'+esc(CR.t("from"))+'" aria-label="'+esc(CR.t("from"))+'">'
+    +'<span class="cr-dash">–</span>'
+    +'<input class="inp cr-d" type="date" data-f="to" value="'+esc(f.to||"")+'" title="'+esc(CR.t("to"))+'" aria-label="'+esc(CR.t("to"))+'">'
+    +'<span class="cr-pills">'+CR.PRESETS.map(function(x){
+      return '<button type="button" class="cr-pill'+(p===x?' on':'')+'" data-act="preset" data-v="'+x+'">'+esc(CR.t("p."+x))+'</button>';
+    }).join("")+'</span>';
+};
+CR.hasF=function(S){ if(S.q) return true; for(var k in S.f) if(S.f[k]) return true; return false; };
+
+CR.view=function(ent){
+  var E=CR.E[ent], S=CR.st(ent), q=(S.q||"").toLowerCase().trim(), toks=q?q.split(" "):[];
+  var out=CR.dat(ent).rows.filter(function(r){
+    if(!E.test(r,S.f)) return false;
+    if(toks.length){ var h=E.hay(r).toLowerCase(); for(var j=0;j<toks.length;j++) if(toks[j] && h.indexOf(toks[j])<0) return false; }
+    return true;
+  });
+  var so=S.sort||E.sort, c=so?CR.col(ent,so.k):null;
+  if(c){
+    var d=so.d;
+    out.sort(function(a,b){
+      var x=c.v(a), y=c.v(b), xe=(x==null||x===""), ye=(y==null||y==="");
+      if(xe||ye){ if(xe&&ye) return (+b.id)-(+a.id); return xe?1:-1; }
+      var r=(typeof x==="string")?x.localeCompare(y):(x<y?-1:(x>y?1:0));
+      return r?r*d:((+b.id)-(+a.id));
+    });
+  }
+  return out;
+};
+
+CR.render=function(){
+  var sec=el("sec-control"); if(!sec) return;
+  if(!CR.built){
+    sec.innerHTML='<div class="cr" id="crRoot"></div>';
+    var root=el("crRoot");
+    root.addEventListener("click",CR.onClick);
+    root.addEventListener("input",CR.onInput);
+    root.addEventListener("change",CR.onChange);
+    root.addEventListener("keydown",CR.onKey);
+    CR.built=true;
+  }
+  CR.popClose();
+  el("crRoot").innerHTML=
+    '<div class="cr-head"><div><h2>🎛️ '+esc(CR.t("title"))+'</h2><div class="sub">'+esc(CR.t("sub"))+'</div></div><div class="cr-hact" id="crHact"></div></div>'
+    +'<div class="cr-ents" id="crEnts" role="tablist"></div>'
+    +'<div class="card cr-card">'
+      +'<div class="cr-fbar" id="crFbar"></div>'
+      +'<div class="cr-sum" id="crSum"></div>'
+      +'<div id="crBulk"></div>'
+      +'<div class="tscroll cr-scroll" id="crScroll"></div>'
+      +'<div class="cr-more" id="crMore"></div>'
+      +'<div class="cr-hint" id="crHint"></div>'
+    +'</div>'
+    +'<div id="crLog"></div>';
+  CR.paintHead(); CR.paintEnts(); CR.paintFbar(); CR.paintGrid(); CR.paintLog();
+};
+CR.paintHead=function(){
+  var h=el("crHact"); if(!h) return;
+  var u=CR.undo, L=CR.lang();
+  h.innerHTML='<button class="mg-btn sm" data-act="undo" type="button"'+(u?' title="'+esc(CR.t("undo.t",{ w:u.w }))+'"':' disabled')+'>↶ '+esc(CR.t("undo"))
+      +(u?' <span class="cr-uw">· '+esc(u.w)+'</span>':'')+'</button>'
+    +'<button class="mg-btn sm'+(CR.showLog?' on':'')+'" data-act="log" type="button">🕘 '+esc(CR.t("log"))+(CR.log.length?' <span class="cr-n">'+num(CR.log.length)+'</span>':'')+'</button>'
+    +'<div class="seg cr-lang" role="group" aria-label="Language"><button type="button" data-act="lang" data-v="id" class="'+(L==="id"?"on":"")+'">ID</button>'
+    +'<button type="button" data-act="lang" data-v="en" class="'+(L==="en"?"on":"")+'">EN</button></div>';
+};
+CR.paintEnts=function(){
+  var h=el("crEnts"); if(!h) return;
+  h.innerHTML=CR.ENTS.map(function(e){
+    var d=CR.D[e];
+    return '<button type="button" role="tab" aria-selected="'+(e===CR.ent)+'" class="cr-ent'+(e===CR.ent?' on':'')+'" data-act="ent" data-v="'+e+'">'
+      +CR.ICON[e]+' '+esc(CR.t("e."+e))+(d&&d.loaded?' <span class="n">'+num(d.rows.length)+'</span>':'')+'</button>';
+  }).join("");
+};
+CR.paintFbar=function(){
+  var h=el("crFbar"); if(!h) return;
+  var E=CR.E[CR.ent], S=CR.st(CR.ent);
+  h.innerHTML='<input class="inp cr-q" type="search" data-f="q" autocomplete="off" placeholder="'+esc(CR.t("search"))+'" value="'+esc(S.q||"")+'">'
+    +E.fbar(S.f)
+    +'<button class="cr-link" data-act="freset" type="button"'+(CR.hasF(S)?'':' hidden')+'>'+esc(CR.t("reset"))+'</button>'
+    +'<span class="cr-sp"></span>'
+    +'<button class="mg-btn sm" data-act="csv" type="button">⬇ '+esc(CR.t("csv"))+'</button>'
+    +'<button class="mg-btn sm" data-act="reload" type="button" title="'+esc(CR.t("reload"))+'" aria-label="'+esc(CR.t("reload"))+'">↻</button>';
+};
+CR.syncReset=function(){ var b=document.querySelector('#crFbar [data-act="freset"]'); if(b) b.hidden=!CR.hasF(CR.st(CR.ent)); };
+
+CR.paintGrid=function(){
+  var sc=el("crScroll"); if(!sc) return;
+  var ent=CR.ent, E=CR.E[ent], D=CR.dat(ent), S=CR.st(ent);
+  var more=el("crMore"), sum=el("crSum"), hint=el("crHint");
+  hint.textContent=CR.t("hint")+(E.hint?" · "+CR.t(E.hint):"");
+  if(!D.loaded){
+    sum.innerHTML=""; more.innerHTML="";
+    sc.innerHTML=D.err?'<div class="empty">'+esc(CR.t("err",{ m:D.err }))+' <button class="cr-link" data-act="reload" type="button">'+esc(CR.t("retry"))+'</button></div>'
+      :'<div style="padding:4px 14px;">'+MG.skel(8)+'</div>';
+    CR.paintBulk(); return;
+  }
+  var rows=CR.view(ent), inView={};
+  CR._rows=rows;
+  rows.forEach(function(r){ inView[r.id]=1; });
+  for(var id in S.sel) if(!inView[id]) delete S.sel[id];   // bulk only ever touches what you can see
+  var parts=[[num(rows.length)+(rows.length!==D.rows.length?' <span class="cr-mut">/ '+num(D.rows.length)+'</span>':''),CR.t("w.rows")]].concat(E.sum(rows));
+  sum.innerHTML=parts.map(function(p){ return '<span><b class="num">'+p[0]+'</b> '+esc(p[1])+'</span>'; }).join("");
+  if(!rows.length){ sc.innerHTML='<div class="empty">'+esc(CR.t("empty"))+'</div>'; more.innerHTML=""; CR.paintBulk(); CR.paintEnts(); return; }
+  var top=sc.scrollTop, left=sc.scrollLeft, so=S.sort||E.sort, shown=rows.slice(0,S.lim);
+  var allOn=rows.every(function(r){ return S.sel[r.id]; });
+  var head='<tr>'+(E.bulk?'<th class="cr-cb"><input type="checkbox" class="mg-cb" data-act="selall"'+(allOn?' checked':'')+' title="'+esc(CR.t("selall",{ n:num(rows.length) }))+'" aria-label="'+esc(CR.t("selall",{ n:num(rows.length) }))+'"></th>':'')
+    +'<th class="cr-xc"></th>'
+    +E.cols.map(function(c){
+      var on=so&&so.k===c.k;
+      return '<th class="'+c.al+'"'+(on?' aria-sort="'+(so.d>0?'ascending':'descending')+'"':'')+'><button type="button" class="cr-th'+(on?' on':'')+'" data-act="sort" data-k="'+c.k+'">'
+        +esc(CR.t(c.h,c.hv))+'<span class="ar">'+(on?(so.d>0?"▲":"▼"):"↕")+'</span></button></th>';
+    }).join("")+'</tr>';
+  sc.innerHTML='<table class="cr-t"><thead>'+head+'</thead><tbody>'+shown.map(function(r){ return CR.rowHtml(ent,r); }).join("")+'</tbody></table>';
+  sc.scrollTop=top; sc.scrollLeft=left;
+  more.innerHTML=rows.length>shown.length?'<span>'+esc(CR.t("shown",{ a:num(shown.length), b:num(rows.length) }))+'</span>'
+    +'<button class="mg-btn sm" data-act="more" type="button">'+esc(CR.t("more",{ n:num(Math.min(200,rows.length-shown.length)) }))+'</button>'
+    +'<button class="mg-btn sm" data-act="all" type="button">'+esc(CR.t("showall"))+'</button>':'';
+  CR.fitX(); CR.paintEnts(); CR.paintBulk();
+};
+CR.rowHtml=function(ent,r){
+  var E=CR.E[ent], S=CR.st(ent), on=!!S.sel[r.id], op=!!S.open[r.id];
+  var h='<tr class="cr-r'+(on?' sel':'')+(op?' open':'')+(E.rowCls?E.rowCls(r):'')+'" data-id="'+esc(r.id)+'">'
+    +(E.bulk?'<td class="cr-cb"><input type="checkbox" class="mg-cb" data-act="sel" data-id="'+esc(r.id)+'"'+(on?' checked':'')+' aria-label="Select #'+esc(r.id)+'"></td>':'')
+    +'<td class="cr-xc"><button type="button" class="cr-xb" data-act="exp" data-id="'+esc(r.id)+'" aria-expanded="'+op+'" aria-label="Details #'+esc(r.id)+'">▶</button></td>'
+    +E.cols.map(function(c){ return '<td'+CR.cellAttr(ent,r,c)+'>'+c.show(r)+'</td>'; }).join("")
+    +'</tr>';
+  if(op) h+='<tr class="cr-xr" data-x="'+esc(r.id)+'"><td colspan="'+(E.cols.length+(E.bulk?2:1))+'"><div class="cr-xbox" id="crx-'+esc(r.id)+'">'+E.xBody(r)+'</div></td></tr>';
+  return h;
+};
+CR.paintRow=function(ent,id){
+  if(ent!==CR.ent) return;
+  var tb=document.querySelector("#crScroll tbody"); if(!tb) return;
+  var tr=tb.querySelector('tr.cr-r[data-id="'+id+'"]'), r=CR.find(ent,id);
+  if(!tr||!r) return;
+  var nx=tr.nextElementSibling;
+  if(nx && nx.classList.contains("cr-xr")) tb.removeChild(nx);
+  var tmp=document.createElement("tbody"); tmp.innerHTML=CR.rowHtml(ent,r);
+  while(tmp.firstChild) tb.insertBefore(tmp.firstChild,tr);
+  tb.removeChild(tr);
+  CR.fitX();
+};
+CR.paintX=function(id){ var b=el("crx-"+id), r=CR.find(CR.ent,id); if(b && r) b.innerHTML=CR.E[CR.ent].xBody(r); };
+// The detail box sticks to the left edge and spans the visible width, so a wide grid
+// never pushes it off-screen.
+CR.fitX=function(){
+  var sc=el("crScroll"); if(!sc) return;
+  var w=sc.clientWidth;
+  Array.prototype.forEach.call(sc.querySelectorAll(".cr-xbox"),function(b){ b.style.width=w+"px"; });
+};
+CR.toggleX=function(id){
+  var ent=CR.ent, S=CR.st(ent), E=CR.E[ent];
+  if(S.open[id]) delete S.open[id]; else S.open[id]=true;
+  CR.paintRow(ent,id);
+  if(S.open[id] && E.xLoad) E.xLoad(CR.find(ent,id));
+};
+CR.syncSelAll=function(){
+  var S=CR.st(CR.ent), cb=document.querySelector('#crScroll [data-act="selall"]');
+  if(cb) cb.checked=(CR._rows||[]).length>0 && CR._rows.every(function(r){ return S.sel[r.id]; });
+};
+CR.toggleSel=function(id,shift){
+  // Range follows what is on screen: edited rows are not re-sorted until the next repaint.
+  var S=CR.st(CR.ent), ids=Array.prototype.map.call(document.querySelectorAll("#crScroll tr.cr-r"),function(t){ return t.getAttribute("data-id"); });
+  var idx=ids.indexOf(String(id)), i, on=!S.sel[id];
+  if(shift && S.last>=0 && idx>=0 && S.last<ids.length){
+    var a=Math.min(S.last,idx), b=Math.max(S.last,idx);
+    for(i=a;i<=b;i++){ if(on) S.sel[ids[i]]=true; else delete S.sel[ids[i]]; }
+    S.last=idx; CR.paintGrid(); return;
+  }
+  if(on) S.sel[id]=true; else delete S.sel[id];
+  S.last=idx;
+  var tr=document.querySelector('#crScroll tr.cr-r[data-id="'+id+'"]'); if(tr) tr.classList.toggle("sel",on);
+  CR.syncSelAll(); CR.paintBulk();
+};
+CR.paintBulk=function(){
+  var h=el("crBulk"); if(!h) return;
+  var ent=CR.ent, E=CR.E[ent], S=CR.st(ent), n=Object.keys(S.sel).length, B=CR.busy, tot=(CR._rows||[]).length;
+  if(B){
+    h.innerHTML='<div class="cr-bulk" aria-live="polite"><span class="bn">'+esc(CR.t("working",{ a:num(B.a), b:num(B.b) }))+'</span>'
+      +'<span class="cr-prog"><i style="width:'+Math.round(B.a/Math.max(1,B.b)*100)+'%"></i></span></div>';
+    return;
+  }
+  if(!E.bulk||!n){ h.innerHTML=""; return; }
+  h.innerHTML='<div class="cr-bulk"><span class="bn">'+esc(CR.t("sel",{ n:num(n) }))+'</span>'
+    +(n<tot?'<button class="cr-link" data-act="selall2" type="button">'+esc(CR.t("selall",{ n:num(tot) }))+'</button>'
+          :'<span class="cr-mut" style="font-size:12px;">'+esc(CR.t("selof",{ n:num(tot) }))+'</span>')
+    +'<span class="sep"></span>'+E.bulk()+'<span class="cr-sp"></span>'
+    +'<button class="mg-btn sm" data-act="clearsel" type="button">✕ '+esc(CR.t("clear"))+'</button></div>';
+};
+CR.paintLog=function(){
+  var h=el("crLog"); if(!h) return;
+  if(!CR.showLog){ h.innerHTML=""; return; }
+  h.innerHTML='<div class="card cr-logc" role="log"><div class="cr-ph"><span>🕘 '+esc(CR.t("log.t"))+'</span>'
+    +'<button class="mg-iconbtn" data-act="log" type="button" aria-label="Close">✕</button></div>'
+    +(CR.log.length?CR.log.map(function(e){
+      var what=(CR.ICON[e.ent]||"")+" "+(e.bulk?esc(CR.t("log.bulk",{ n:num(e.bulk) })):"#"+esc(e.id))+" · "+esc(e.w||"")+(e.u?' <span class="cr-mut">↶</span>':'');
+      var mc=e.m?' class="num"':'';
+      var ch=e.bulk?(e.b?'→ <b>'+esc(e.b)+'</b>':''):'<s'+mc+'>'+esc(e.a)+'</s> → <b'+mc+'>'+esc(e.b)+'</b>';
+      var st=e.ok?'<span class="ok">✓</span>':'<span class="bad" title="'+esc(e.err||"")+'">✗ '+(e.bad?num(e.bad)+" ":"")+esc(CR.t("log.fail"))+'</span>';
+      return '<div class="cr-le"><span class="tm">'+e.tm+'</span><span class="ch">'+what+'<br>'+ch
+        +(!e.ok&&e.err?'<br><span class="cr-mut cr-sm">'+esc(e.err)+'</span>':'')+'</span>'+st+'</div>';
+    }).join(""):'<div class="empty">'+esc(CR.t("log.empty"))+'</div>')
+    +'</div>';
+};
+
+/* ===================== popovers ===================== */
+CR.pop=function(anchor,html,mount){
+  CR.popClose();
+  var p=document.createElement("div"); p.className="cr-pop"; p.innerHTML=html;
+  document.body.appendChild(p);
+  CR._pop={ el:p, anchor:anchor };
+  CR.place();
+  if(mount) mount(p);
+  CR.place();
+  return p;
+};
+CR.place=function(){
+  var o=CR._pop; if(!o) return;
+  var r=o.anchor.getBoundingClientRect(), p=o.el, w=p.offsetWidth, h=p.offsetHeight;
+  var left=Math.max(8,Math.min(r.left,window.innerWidth-w-8)), top=r.bottom+4;
+  if(top+h>window.innerHeight-8) top=Math.max(8,r.top-h-4);
+  p.style.left=left+"px"; p.style.top=top+"px";
+};
+CR.popClose=function(back){
+  var o=CR._pop; if(!o) return;
+  CR._pop=null;
+  if(o.el.parentNode) o.el.parentNode.removeChild(o.el);
+  if(back && o.anchor && o.anchor.isConnected && o.anchor.focus) o.anchor.focus({ preventScroll:true });
+};
+// Option menu. ≤ 8 options: digits 1–9 pick instantly; longer lists get a filter box.
+CR.menu=function(anchor,opts,cur,onPick){
+  var srch=opts.length>8;
+  CR.pop(anchor,(srch?'<input class="inp" type="text" data-pq autocomplete="off" placeholder="'+esc(CR.t("search"))+'">':'')+'<div class="cr-opts" role="listbox"></div>',function(p){
+    var list=p.querySelector(".cr-opts"), q=p.querySelector("[data-pq]"), vis=opts, hot=0, i;
+    for(i=0;i<opts.length;i++) if(String(opts[i].v)===cur) hot=i;
+    function paint(){
+      list.innerHTML=vis.length?vis.map(function(o,i){
+        var on=String(o.v)===cur;
+        return '<button type="button" role="option" aria-selected="'+on+'" class="cr-opt'+(i===hot?' hot':'')+(on?' cur':'')+'" data-i="'+i+'">'
+          +(o.ic?'<span>'+o.ic+'</span>':'')+'<span class="lb">'+esc(o.l)+'</span>'
+          +(on?'<span class="ck">✓</span>':((!srch&&i<9)?'<span class="kb">'+(i+1)+'</span>':''))+'</button>';
+      }).join(""):'<div class="cr-none">'+esc(CR.t("none"))+'</div>';
+      var hn=list.querySelector(".hot");
+      if(hn){
+        if(hn.offsetTop<list.scrollTop) list.scrollTop=hn.offsetTop;
+        else if(hn.offsetTop+hn.offsetHeight>list.scrollTop+list.clientHeight) list.scrollTop=hn.offsetTop+hn.offsetHeight-list.clientHeight;
+      }
+    }
+    function pick(i){ var o=vis[i]; if(!o) return; CR.popClose(true); onPick(o.v); }
+    list.addEventListener("click",function(e){ var b=e.target.closest(".cr-opt"); if(b) pick(+b.getAttribute("data-i")); });
+    function key(e){
+      if(e.key==="ArrowDown"){ e.preventDefault(); hot=Math.min(vis.length-1,hot+1); paint(); }
+      else if(e.key==="ArrowUp"){ e.preventDefault(); hot=Math.max(0,hot-1); paint(); }
+      else if(e.key==="Enter"){ e.preventDefault(); pick(hot); }
+      else if(e.key==="Escape"||e.key==="Tab"){ e.preventDefault(); CR.popClose(true); }
+      else if(!srch && e.key.length===1 && e.key>="1" && e.key<="9"){ e.preventDefault(); pick(+e.key-1); }
+    }
+    if(q){
+      q.addEventListener("input",function(){
+        var n=q.value.toLowerCase().trim();
+        vis=n?opts.filter(function(o){ return String(o.l).toLowerCase().indexOf(n)>=0; }):opts; hot=0; paint();
+      });
+      q.addEventListener("keydown",key); q.focus({ preventScroll:true });
+    } else { p.tabIndex=-1; p.addEventListener("keydown",key); p.focus({ preventScroll:true }); }
+    paint();
+  });
+};
+// Quick value prompt for bulk "set field" actions.
+CR.askVal=function(anchor,col,cb){
+  var t=col.type==="date"?"date":"text";
+  CR.pop(anchor,'<div class="cr-popf"><input class="inp" type="'+t+'"'+(col.type==="money"?' inputmode="numeric"':'')+' data-pv autocomplete="off" value="'+(col.type==="date"?MG.today():"")+'">'
+    +'<button type="button" class="mg-btn sm primary" data-pa>'+esc(CR.t("apply"))+'</button></div>',function(p){
+    var inp=p.querySelector("[data-pv]");
+    function go(){ var r=CR.parse(col,inp.value); if(r.err){ MG.toast(r.err,"err"); inp.focus(); return; } CR.popClose(true); cb(r.val); }
+    p.querySelector("[data-pa]").addEventListener("click",go);
+    inp.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); go(); } else if(e.key==="Escape"){ CR.popClose(true); } });
+    inp.focus({ preventScroll:true });
+  });
+};
+CR.askSet=function(anchor,ent,k){
+  var col=CR.col(ent,k);
+  if(col.type==="enum") CR.menu(anchor,col.opts({}),"",function(v){ CR.bulkSet(ent,k,v); });
+  else CR.askVal(anchor,col,function(v){ CR.bulkSet(ent,k,v); });
+};
+document.addEventListener("mousedown",function(e){
+  var o=CR._pop; if(o && !o.el.contains(e.target) && !o.anchor.contains(e.target)) CR.popClose();
+},true);
+window.addEventListener("scroll",function(e){
+  var o=CR._pop; if(o && !(e.target && e.target.nodeType===1 && o.el.contains(e.target))) CR.popClose();
+},true);
+window.addEventListener("resize",function(){ CR.popClose(); if(CR.active) CR.fitX(); });
+
+/* ===================== cell editing ===================== */
+CR.ctx=function(cell){
+  var k=cell.getAttribute("data-k"), sub=cell.getAttribute("data-sub");
+  if(sub){
+    var pid=cell.getAttribute("data-pid"), lid=cell.getAttribute("data-lid"), SD=CR.SUB[sub], box=CR.sub[sub+pid];
+    var line=CR.subLine(sub,pid,lid), sc=SD&&SD.cols[k];
+    if(!line||!sc) return null;
+    return { col:sc, get:function(){ return sc.get(line,box); }, commit:function(v){ return CR.commitSub(sub,pid,lid,k,v); } };
+  }
+  var id=cell.getAttribute("data-id"), ent=CR.ent, row=CR.find(ent,id), c=CR.col(ent,k);
+  if(!row||!c||!CR.canEdit(c,row)) return null;
+  return { col:c, row:row, get:function(){ return c.get(row); }, commit:function(v){ return CR.commit(ent,id,k,v); } };
+};
+CR.beginEdit=function(cell){
+  if(CR.busy) return;
+  if(CR._pop && CR._pop.anchor===cell){ CR.popClose(); return; }
+  var ctx=CR.ctx(cell); if(!ctx) return;
+  if(ctx.col.type==="enum"){
+    var cur=ctx.get(), sel=CR.cellSel(cell);
+    CR.menu(cell,ctx.col.opts(ctx.row),cur==null?"":String(cur),function(v){ ctx.commit(v); if(!ctx.col.confirm) CR.refocus(sel); });
+    return;
+  }
+  CR.editIn(cell,ctx);
+};
+CR.cellSel=function(n){
+  if(!n) return null;
+  var ck=n.getAttribute("data-ck"); if(!ck) return null;
+  var scope=n.closest(".cr-kv")?"#crRoot .cr-kv ":(n.closest(".cr-sub")?"#crRoot .cr-sub ":"#crScroll tr.cr-r ");
+  return scope+'.cr-c[data-ck="'+ck+'"]';
+};
+CR.refocus=function(sel){ setTimeout(function(){ var n=sel&&document.querySelector(sel); if(n) n.focus({ preventScroll:true }); },40); };
+CR.nextEd=function(cell,dir){
+  var kv=cell.closest(".cr-kv"), box=kv||cell.closest("tbody"); if(!box) return null;
+  var main=!kv && cell.parentNode.classList.contains("cr-r");
+  var all=Array.prototype.filter.call(box.querySelectorAll(".cr-c.ed"),function(n){
+    return main?n.parentNode.classList.contains("cr-r"):(kv?true:n.closest("tbody")===box);
+  });
+  var i=all.indexOf(cell);
+  return i<0?null:(all[i+dir]||null);
+};
+CR.editIn=function(cell,ctx){
+  var col=ctx.col, cur=ctx.get(), inp=document.createElement("input"), keep=cell.innerHTML, done=false, sel=CR.cellSel(cell);
+  inp.className="cr-in"+(col.al==="r"?" r":"");
+  if(col.type==="date"){ inp.type="date"; inp.value=cur?String(cur).slice(0,10):""; }
+  else {
+    inp.type="text"; inp.autocomplete="off";
+    if(col.type==="money"||col.type==="int"){ inp.inputMode="numeric"; inp.value=(cur==null||cur==="")?"":String(Math.round(+cur)); }
+    else if(col.type==="dec"){ inp.inputMode="decimal"; inp.value=(cur==null||cur==="")?"":String(+cur); }
+    else inp.value=cur==null?"":String(cur);
+  }
+  cell.classList.add("editing"); cell.innerHTML=""; cell.appendChild(inp);
+  inp.focus({ preventScroll:true }); try{ inp.select(); }catch(x){}
+  function finish(save,dir,fromBlur){
+    if(done) return; done=true;
+    var nextSel=dir?CR.cellSel(CR.nextEd(cell,dir)):null, raw=inp.value;
+    cell.classList.remove("editing"); cell.innerHTML=keep;
+    if(!save){ CR.refocus(sel); return; }
+    var p=CR.parse(col,raw);
+    if(p.err){ MG.toast(p.err,"err"); if(!fromBlur) CR.refocus(sel); return; }
+    ctx.commit(p.val);
+    if(nextSel) setTimeout(function(){ var n=document.querySelector(nextSel); if(n){ n.focus({ preventScroll:true }); CR.beginEdit(n); } },40);
+    else if(!fromBlur) CR.refocus(sel);
+  }
+  inp.addEventListener("keydown",function(e){
+    e.stopPropagation();
+    if(e.key==="Enter"){ e.preventDefault(); finish(true); }
+    else if(e.key==="Escape"){ e.preventDefault(); finish(false); }
+    else if(e.key==="Tab"){ e.preventDefault(); finish(true,e.shiftKey?-1:1); }
+  });
+  inp.addEventListener("blur",function(){ finish(true,0,true); });
+};
+
+/* ===================== events ===================== */
+CR.onClick=function(e){
+  var t=e.target, a=t.closest?t.closest("[data-act]"):null;
+  if(a){
+    var act=a.getAttribute("data-act"), v=a.getAttribute("data-v"), ent=CR.ent, S=CR.st(ent);
+    if(act==="sel"){ CR.toggleSel(a.getAttribute("data-id"),e.shiftKey); return; }
+    if(act==="selall"){
+      var all=CR._rows.length>0 && CR._rows.every(function(r){ return S.sel[r.id]; });
+      S.sel={}; if(!all) CR._rows.forEach(function(r){ S.sel[r.id]=true; });
+      CR.paintGrid(); return;
+    }
+    if(act==="selall2"){ CR._rows.forEach(function(r){ S.sel[r.id]=true; }); CR.paintGrid(); return; }
+    if(act==="clearsel"){ S.sel={}; S.last=-1; CR.paintGrid(); return; }
+    if(act==="exp"){ CR.toggleX(a.getAttribute("data-id")); return; }
+    if(act==="ent"){ CR.show(v); return; }
+    if(act==="lang"){ CR.setLang(v); return; }
+    if(act==="undo"){ CR.doUndo(); return; }
+    if(act==="log"){ CR.showLog=!CR.showLog; CR.paintHead(); CR.paintLog(); return; }
+    if(act==="reload"){ CR.sub={}; CR.load(ent,true); return; }
+    if(act==="csv"){ CR.csv(); return; }
+    if(act==="freset"){ S.q=""; S.f={}; S.lim=200; CR.paintFbar(); CR.paintGrid(); return; }
+    if(act==="preset"){ var pr=CR.presetRange(v); S.f.from=pr[0]; S.f.to=pr[1]; S.lim=200; CR.paintFbar(); CR.paintGrid(); return; }
+    if(act==="more"){ S.lim+=200; CR.paintGrid(); return; }
+    if(act==="all"){ S.lim=1000000; CR.paintGrid(); return; }
+    if(act==="sort"){
+      var k=a.getAttribute("data-k"), cur=S.sort||CR.E[ent].sort, c=CR.col(ent,k);
+      S.sort=(cur&&cur.k===k)?{ k:k, d:-cur.d }:{ k:k, d:(CR.isNum(c)||c.type==="date")?-1:1 };
+      CR.paintGrid(); return;
+    }
+    if(act==="b"){ if(!CR.busy) CR.E[ent].bulkRun(a.getAttribute("data-b"),v,a); return; }
+    return;
+  }
+  var c2=t.closest?t.closest(".cr-c"):null;
+  if(!c2 || c2.classList.contains("editing")) return;
+  if(c2.classList.contains("ed")) CR.beginEdit(c2);
+  else if(c2.parentNode.classList && c2.parentNode.classList.contains("cr-r") && !String(window.getSelection?window.getSelection():"")) CR.toggleX(c2.getAttribute("data-id"));
+};
+CR.onInput=function(e){
+  var t=e.target, f=t.getAttribute&&t.getAttribute("data-f");
+  if(!f || t.tagName==="SELECT" || t.type==="date") return;
+  var S=CR.st(CR.ent);
+  if(f==="q") S.q=t.value; else S.f[f]=t.value;
+  S.lim=200;
+  clearTimeout(CR._qt);
+  CR._qt=setTimeout(function(){ CR.paintGrid(); CR.syncReset(); },160);
+};
+CR.onChange=function(e){
+  var t=e.target, f=t.getAttribute&&t.getAttribute("data-f");
+  if(!f || !(t.tagName==="SELECT" || t.type==="date")) return;
+  var S=CR.st(CR.ent); S.f[f]=t.value; S.lim=200;
+  CR.paintFbar(); CR.paintGrid();
+};
+CR.near=function(t,k){
+  if(t.tagName!=="TD") return null;
+  if(k==="ArrowLeft"||k==="ArrowRight"){
+    var s=k==="ArrowLeft"?t.previousElementSibling:t.nextElementSibling;
+    while(s && !s.classList.contains("cr-c")) s=k==="ArrowLeft"?s.previousElementSibling:s.nextElementSibling;
+    return s;
+  }
+  var tr=t.parentNode, main=tr.classList.contains("cr-r"), s2=k==="ArrowUp"?tr.previousElementSibling:tr.nextElementSibling;
+  while(s2 && main && !s2.classList.contains("cr-r")) s2=k==="ArrowUp"?s2.previousElementSibling:s2.nextElementSibling;
+  return s2?s2.querySelector(':scope > .cr-c[data-k="'+t.getAttribute("data-k")+'"]'):null;
+};
+CR.onKey=function(e){
+  var t=e.target;
+  if(!t.classList || !t.classList.contains("cr-c") || t.classList.contains("editing")) return;
+  var k=e.key;
+  if(k==="Enter"||k==="F2"){
+    e.preventDefault();
+    if(t.classList.contains("ed")) CR.beginEdit(t);
+    else if(t.parentNode.classList.contains("cr-r")) CR.toggleX(t.getAttribute("data-id"));
+    return;
+  }
+  if(k==="ArrowLeft"||k==="ArrowRight"||k==="ArrowUp"||k==="ArrowDown"){
+    var n=CR.near(t,k); if(n){ e.preventDefault(); n.focus(); }
+  }
+};
+document.addEventListener("keydown",function(e){
+  if(!CR.active || CR._pop || !(e.ctrlKey||e.metaKey) || e.shiftKey || String(e.key).toLowerCase()!=="z") return;
+  var t=e.target, tag=t&&t.tagName;
+  if(tag==="INPUT"||tag==="TEXTAREA"||tag==="SELECT"||(t&&t.isContentEditable)) return;
+  if(el("mgModalRoot") && el("mgModalRoot").children.length) return;
+  e.preventDefault(); CR.doUndo();
+});
+
+CR.csv=function(){
+  if(typeof RP==="undefined" || !RP.csv){ MG.toast(CR.t("csv.none"),"err"); return; }
+  var ent=CR.ent, E=CR.E[ent];
+  RP.csv("pokehit-control-"+ent+"-"+MG.today(), E.cols.map(function(c){ return CR.t(c.h,c.hv); }),
+    (CR._rows||[]).map(function(r){ return E.cols.map(function(c){ return CR.txt(c,r); }); }));
+};
+
+/* ===================== open / switch ===================== */
+CR.show=function(ent){
+  if(CR.E[ent]===undefined || CR.busy) return;
+  CR.ent=ent;
+  try{ localStorage.setItem("pokehit_cr_ent",ent); }catch(e){}
+  if(ent==="products" && CR.D.products && CR.D.products.loaded) CR.D.products.rows=MG.cat.products;
+  CR.render();
+  CR.load(ent);
+};
+CR.open=function(){
+  if(!CR.built){ try{ var s=localStorage.getItem("pokehit_cr_ent"); if(s && CR.E[s]) CR.ent=s; }catch(e){} }
+  CR.navLabel();
+  if(CR.ent==="products" && CR.D.products && CR.D.products.loaded) CR.D.products.rows=MG.cat.products;
+  CR.render();
+  var D=CR.dat(CR.ent);
+  CR.load(CR.ent, D.loaded, D.loaded);   // first open: load; re-open: refresh quietly
+};
+
+/* ===================== tab registration + shell hooks ===================== */
+(function(){
+  var i=0; for(;i<TABS.length;i++) if(TABS[i][0]==="mg-sales") break;
+  TABS.splice(i,0,["control",CR.t("tab"),"🎛️"]);
+})();
+CR.navLabel=function(){
+  var lbl=CR.t("tab");
+  for(var i=0;i<TABS.length;i++) if(TABS[i][0]==="control") TABS[i][1]=lbl;
+  var d=document.querySelector('.navitem[data-tab="control"] span:last-child'); if(d) d.textContent=lbl;
+  var m=document.querySelector('.mseg[data-tab="control"]'); if(m) m.textContent="🎛️ "+lbl;
+  if(CR.active){ var pt=el("pageTitle"); if(pt) pt.textContent=lbl; }
+};
+// Control Room heads the Manage group: move the group header above it.
+var __crDecorateNav=MG.decorateNav;
+MG.decorateNav=function(){
+  __crDecorateNav();
+  var it=document.querySelector('.navitem[data-tab="control"]'), ms=document.querySelector('.navitem[data-tab="mg-sales"]');
+  var g=ms?ms.previousElementSibling:null;
+  if(it && g && g.classList.contains("navgrp")) it.parentNode.insertBefore(g,it);
+  CR.navLabel();
+};
+if(typeof RP!=="undefined" && RP.setLang){
+  var __crRpSetLang=RP.setLang;
+  RP.setLang=function(l){ __crRpSetLang(l); CR.navLabel(); };
+}
+var __crSyncNav=syncNav;
+syncNav=function(name){
+  __crSyncNav(name);
+  if(name==="control"){ if(!CR.active){ CR.active=true; try{ CR.open(); }catch(e){ if(window.console) console.error(e); } } }
+  else if(CR.active){ CR.active=false; CR.popClose(); }
+};
 
 
 var D = {};
