@@ -1050,6 +1050,8 @@
   .cr-bulk .lbl{font-size:10.5px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px;}
   .cr-bulk .mg-btn.sm{min-height:30px;}
   .cr-bulk .danger{color:var(--red);}
+  table.cr-cvh{min-width:0;} .cr-cvh td{white-space:normal;vertical-align:top;}
+  .cr-cvh td.r{white-space:nowrap;}
   .cr-prog{flex:1 1 160px;height:6px;border-radius:4px;background:var(--panel-b);overflow:hidden;min-width:100px;}
   .cr-prog i{display:block;height:100%;background:var(--acc);transition:width .2s;}
 
@@ -9141,6 +9143,14 @@ CR.T = {
   "fk.ship":"Already shipped — delete its shipment(s) first","fk.pay":"Has payments recorded — delete those payments first",
   "fk.sold":"Sales already used this stock — delete those sales first","fk.conv":"Used by a stock conversion — delete that first",
   "del.ok":"Delete","deleted":"Deleted {n}",
+  "cv.btn":"Convert stock","cv.from":"Convert this product…","cv.title":"🔁 Convert stock",
+  "cv.sub":"Turn units of one product into another (e.g. 1 Booster Box → 30 Loose Packs). The cost moves with the stock: no sale, no expense, total stock value unchanged.",
+  "cv.src":"From","cv.qty":"Units to use","cv.dst":"Into","cv.out":"Units produced","cv.date":"Date","cv.notes":"Notes (optional)",
+  "cv.pick":"Pick a product","cv.avail":"sellable","cv.go":"Convert","cv.need":"Pick both products and enter both quantities.",
+  "cv.cost":"Cost of {q} × {p} (oldest stock first): {v}","cv.unit":"{n} × {p} at {u} each","cv.now":"Current average cost of {p}: {v}",
+  "cv.same":"Total stock value stays the same.","cv.batch":"from batch","cv.done":"Converted {a} → {b}","cv.undo":"Conversion #{id} undone",
+  "cv.hist":"Recent conversions","cv.none":"No conversions yet.","cv.del":"Undo","cv.sure":"Sure?","cv.used":"Some of the converted stock was already sold — delete those sales first",
+  "cv.nostock":"No product has warehouse stock to convert.","cancel":"Cancel",
   "q.title":"Change quantity?",
   "q.body":"Sale #{id}: {a} → {b} units. Saving re-plans FIFO on the server: the old batch allocations are released and COGS is recomputed from the oldest stock available now. If there isn't enough stock, the old allocations are restored and nothing changes.",
   "q.ok":"Re-plan & save",
@@ -9201,6 +9211,14 @@ CR.T = {
   "fk.ship":"Sudah dikirim — hapus pengirimannya dulu","fk.pay":"Sudah ada pembayaran — hapus pembayarannya dulu",
   "fk.sold":"Stok ini sudah terpakai penjualan — hapus penjualannya dulu","fk.conv":"Dipakai konversi stok — hapus konversinya dulu",
   "del.ok":"Hapus","deleted":"{n} dihapus",
+  "cv.btn":"Konversi stok","cv.from":"Konversi produk ini…","cv.title":"🔁 Konversi stok",
+  "cv.sub":"Ubah unit satu produk menjadi produk lain (mis. 1 Booster Box → 30 Loose Pack). Biayanya ikut pindah: bukan penjualan, bukan biaya, total nilai stok tetap.",
+  "cv.src":"Dari","cv.qty":"Unit dipakai","cv.dst":"Menjadi","cv.out":"Unit dihasilkan","cv.date":"Tanggal","cv.notes":"Catatan (opsional)",
+  "cv.pick":"Pilih produk","cv.avail":"siap jual","cv.go":"Konversi","cv.need":"Pilih kedua produk dan isi kedua jumlah.",
+  "cv.cost":"Biaya {q} × {p} (stok terlama dulu): {v}","cv.unit":"{n} × {p} dengan biaya {u} per unit","cv.now":"Biaya rata-rata {p} saat ini: {v}",
+  "cv.same":"Total nilai stok tidak berubah.","cv.batch":"dari batch","cv.done":"Dikonversi {a} → {b}","cv.undo":"Konversi #{id} dibatalkan",
+  "cv.hist":"Konversi terakhir","cv.none":"Belum ada konversi.","cv.del":"Batalkan","cv.sure":"Yakin?","cv.used":"Sebagian stok hasil konversi sudah terjual — hapus penjualannya dulu",
+  "cv.nostock":"Tidak ada produk dengan stok gudang untuk dikonversi.","cancel":"Batal",
   "q.title":"Ubah jumlah?",
   "q.body":"Penjualan #{id}: {a} → {b} unit. Saat disimpan, FIFO dihitung ulang di server: alokasi batch lama dilepas dan HPP dihitung dari stok tertua yang tersedia sekarang. Kalau stoknya tidak cukup, alokasi lama dikembalikan dan tidak ada yang berubah.",
   "q.ok":"Hitung ulang & simpan",
@@ -9529,6 +9547,7 @@ CR.doUndo=function(){
     u.pairs.forEach(function(p){ var r=CR.find("sales",p.id); if(r) pairs.push({ row:r, to:p.to }); });
     return CR.classify(pairs,true);
   }
+  if(u.conv) return CR.convUndo(u.conv);
   if(u.sub) return CR.commitSub(u.sub,u.pid,u.lid,u.k,u.val,{ isUndo:true });
   if(u.items.length===1){ var it=u.items[0]; return CR.commit(u.ent,it.id,it.k,it.val,{ isUndo:true }); }
   return CR.runItems(u.ent,u.items,{ w:"↶ "+u.w, isUndo:true, stock:true });
@@ -10023,6 +10042,7 @@ CR.E.products={
     return [[num(u),CR.t("s.stock")],[money(val),CR.t("s.value")]];
   },
   hint:"hint.p",
+  tool:function(){ return '<button class="mg-btn sm" data-act="conv" type="button">🔁 '+esc(CR.t("cv.btn"))+'</button>'; },
   cols:[
     CR.idCol(""),
     CR.C({ k:"set_name", h:"c.name", type:"text", req:true, cls:"wide", save:CR.pu("set_name") }),
@@ -10068,6 +10088,7 @@ CR.E.products={
       +CR.stat("⏳ "+CR.t("c.oo").split(" ").slice(1).join(" "),num(s.on_order||0))
       +CR.stat(CR.t("c.avg"),s.avg_landed_cost_idr?money(s.avg_landed_cost_idr):"—")+'</div>'
       +'<div class="cr-note" style="margin:0 0 10px;">🔒 '+esc(CR.t("x.stockhint"))+'</div>'
+      +(CR.sellable(r)>0?'<button class="mg-btn sm" data-act="conv" data-v="'+esc(r.id)+'" type="button" style="margin:0 0 12px;">🔁 '+esc(CR.t("cv.from"))+'</button>':'')
       +'<div class="cr-ph">'+esc(CR.t("x.batches"))+'</div>'
       +((g && typeof batchTable==="function")?batchTable(g):'<div class="cr-mut" style="font-size:12.5px;">'+esc(CR.t("x.nobatch"))+'</div>');
     return CR.panel(CR.t("x.details"), CR.kv("products",r,["set_name","language","product_type_id","sale_price_idr","sku","is_active"],[
@@ -10186,6 +10207,117 @@ CR.paintEnts=function(){
       +CR.ICON[e]+' '+esc(CR.t("e."+e))+(d&&d.loaded?' <span class="n">'+num(d.rows.length)+'</span>':'')+'</button>';
   }).join("");
 };
+/* ---------- stock conversion (1 box → 30 packs …) ---------- */
+// Single source → single target. The server re-plans FIFO on create, so the
+// preview is advisory; a stale preview can't over-draw stock.
+CR.convert=function(fromId){
+  var all=MG.cat.products.filter(function(p){ return p.is_active!==false; })
+    .sort(function(a,b){ var x=MG.prodLabel(a), y=MG.prodLabel(b); return x<y?-1:(x>y?1:0); });
+  // FIFO draws from all arrived stock (warehouse + store), same pool as a sale.
+  function wh(p){ return CR.sellable(p); }
+  var src=all.filter(function(p){ return wh(p)>0; });
+  if(!src.length){ MG.toast(CR.t("cv.nostock"),"err"); return; }
+  if(!src.some(function(p){ return String(p.id)===String(fromId); })) fromId="";
+  var srcOpts=src.map(function(p){ return { v:p.id, l:MG.prodLabel(p)+" — "+num(wh(p))+" "+CR.t("cv.avail") }; });
+  var dstOpts=all.map(function(p){ return { v:p.id, l:MG.prodLabel(p) }; });
+  MG.modal({ title:esc(CR.t("cv.title")), sub:esc(CR.t("cv.sub")), wide:true,
+    body:'<div class="mg-form">'
+      +'<div class="mg-grid2">'+MG.f.sel("cvFrom",CR.t("cv.src"),[{ v:"", l:CR.t("cv.pick") }].concat(srcOpts),fromId)+MG.f.num("cvQty",CR.t("cv.qty"),1)+'</div>'
+      +'<div class="mg-grid2">'+MG.f.sel("cvTo",CR.t("cv.dst"),[{ v:"", l:CR.t("cv.pick") }].concat(dstOpts),"")+MG.f.num("cvOut",CR.t("cv.out"),"")+'</div>'
+      +'<div class="mg-grid2">'+MG.f.date("cvDate",CR.t("cv.date"),MG.today())+MG.f.text("cvNotes",CR.t("cv.notes"),"","")+'</div>'
+      +'<div id="cvPrev" class="cr-note" style="margin:0;"></div>'
+      +'<div class="mg-foot"><button class="mg-btn" type="button" id="cvNo">'+esc(CR.t("cancel"))+'</button>'
+      +'<button class="mg-btn primary" type="button" id="cvGo" disabled>🔁 '+esc(CR.t("cv.go"))+'</button></div>'
+      +'<div class="cr-ph" style="margin-top:14px;">'+esc(CR.t("cv.hist"))+'</div><div id="cvHist">'+MG.skel(2)+'</div>'
+    +'</div>',
+    onMount:function(body,close){
+      var seq=0, timer=null, ready=null;
+      function q(id){ return body.querySelector("#"+id); }
+      function vals(){
+        return { from:q("cvFrom").value, to:q("cvTo").value, qty:Number(q("cvQty").value), out:Number(q("cvOut").value) };
+      }
+      function lbl(id){ return MG.prodLabelById(id); }
+      // CR.t with some values given as ready HTML (money), the rest escaped.
+      function th(k,vars,html){
+        var tv={}, x; for(x in vars) tv[x]=vars[x]; for(x in html) tv[x]="@@"+x+"@@";
+        var out=esc(CR.t(k,tv)); for(x in html) out=out.split("@@"+x+"@@").join(html[x]);
+        return out;
+      }
+      function preview(){
+        var v=vals(), box=q("cvPrev"), go=q("cvGo"), my=++seq;
+        ready=null; go.disabled=true;
+        if(!v.from||!v.to||!(v.qty>0)||!(v.out>0)){ box.textContent=CR.t("cv.need"); return; }
+        box.innerHTML=MG.skel(1);
+        MG.api("conversions.preview",{ sources:[{ product_id:Number(v.from), quantity:v.qty }], output_product_id:Number(v.to), output_quantity:v.out })
+          .then(function(d){
+            if(my!==seq) return;
+            var s0=d.sources[0], now=+(MG.stockOf(v.to).avg_landed_cost_idr)||0;
+            box.innerHTML='<div>'+th("cv.cost",{ q:num(v.qty), p:lbl(v.from) },{ v:'<b class="num">'+money(d.total_cost_basis_idr)+'</b>' })
+              +' <span class="cr-mut">('+s0.batches.map(function(b){ return esc(CR.t("cv.batch"))+" 🚚 #"+esc(b.shipment_id)+" · "+num(b.quantity)+" × "+money(b.cogs_per_unit_idr); }).join(", ")+')</span></div>'
+              +'<div style="margin-top:4px;">→ '+th("cv.unit",{ n:num(v.out), p:lbl(v.to) },{ u:'<b class="num">'+money(d.unit_cost_idr)+'</b>' })+'</div>'
+              +(now?'<div class="cr-mut" style="margin-top:4px;">'+th("cv.now",{ p:lbl(v.to) },{ v:'<span class="num">'+money(now)+'</span>' })+'</div>':'')
+              +'<div class="cr-mut" style="margin-top:4px;">✓ '+esc(CR.t("cv.same"))+'</div>';
+            ready=v; go.disabled=false;
+          })
+          .catch(function(e){ if(my!==seq) return; box.innerHTML='<div class="cr-warn">'+esc((e&&e.message)||"error")+'</div>'; });
+      }
+      function soon(){ clearTimeout(timer); timer=setTimeout(preview,300); }
+      ["input","change","click","keyup"].forEach(function(ev){ body.addEventListener(ev,function(e){ if(body.isConnected && !e.target.closest("#cvHist,#cvGo,#cvNo")) soon(); }); });
+      q("cvNo").addEventListener("click",close);
+      q("cvGo").addEventListener("click",function(){
+        var v=ready; if(!v) return;
+        var go=q("cvGo"); go.disabled=true; seq++;
+        var a=num(v.qty)+" × "+lbl(v.from), b=num(v.out)+" × "+lbl(v.to);
+        MG.api("conversions.create",{ sources:[{ product_id:Number(v.from), quantity:v.qty }], output_product_id:Number(v.to), output_quantity:v.out,
+            date:q("cvDate").value||MG.today(), notes:(q("cvNotes").value||"").trim()||(a+" → "+b) })
+          .then(function(d){
+            close();
+            MG.toast(CR.t("cv.done",{ a:a, b:b }),"ok");
+            CR.addLog({ ent:"products", id:v.to, w:CR.t("cv.btn"), a:a, b:b, ok:true });
+            CR.undo={ conv:d.conversion_id, w:CR.t("cv.btn")+" "+a+" → "+b }; CR.paintHead();
+            CR.convAfter();
+          })
+          .catch(function(e){ go.disabled=false; q("cvPrev").innerHTML='<div class="cr-warn">'+esc((e&&e.message)||"error")+'</div>'; });
+      });
+      CR.convHist(q("cvHist"));
+      preview();
+    } });
+};
+CR.convAfter=function(){
+  if(CR.D.invoices) CR.D.invoices.loaded=false;
+  if(CR.D.shipments) CR.D.shipments.loaded=false;
+  if(CR.D.sales) CR.D.sales.loaded=false;
+  CR.after("products",true);
+};
+CR.convHist=function(host){
+  MG.api("conversions.list",{ limit:8 }).then(function(d){
+    var list=arr((d||{}).conversions);
+    if(!list.length){ host.innerHTML='<div class="cr-mut" style="font-size:12.5px;">'+esc(CR.t("cv.none"))+'</div>'; return; }
+    host.innerHTML='<div class="cr-subwrap"><table class="cr-sub cr-cvh"><tbody>'+list.map(function(c){
+      var from=arr(c.sources).map(function(s){ return num(s.quantity)+" × "+MG.prodLabelById(s.product_id); }).join(" + ");
+      return '<tr><td class="l">'+esc(MG.dstr(c.conversion_date))+'</td><td class="l">'+esc(from)+' → <b>'+num(c.output_quantity)+' × '+esc(MG.prodLabelById(c.output_product_id))+'</b></td>'
+        +'<td class="r num">'+money(c.total_cost_basis_idr)+'</td><td class="r">'
+        +(c.output_used?'<span class="cr-mut" title="'+esc(CR.t("cv.used"))+'">🔒</span>'
+          :'<button class="mg-btn sm danger" type="button" data-cvdel="'+esc(c.id)+'">'+esc(CR.t("cv.del"))+'</button>')+'</td></tr>';
+    }).join("")+'</tbody></table></div>';
+    Array.prototype.forEach.call(host.querySelectorAll("[data-cvdel]"),function(btn){
+      btn.addEventListener("click",function(){
+        if(!btn.getAttribute("data-sure")){ btn.setAttribute("data-sure","1"); btn.textContent=CR.t("cv.sure"); return; }
+        btn.disabled=true;
+        CR.convUndo(btn.getAttribute("data-cvdel")).then(function(){ CR.convHist(host); });
+      });
+    });
+  }).catch(function(e){ host.innerHTML='<div class="cr-warn">'+esc((e&&e.message)||"error")+'</div>'; });
+};
+CR.convUndo=function(id){
+  return MG.api("conversions.delete",{ id:Number(id) }).then(function(){
+    if(CR.undo && String(CR.undo.conv)===String(id)){ CR.undo=null; CR.paintHead(); }
+    MG.toast(CR.t("cv.undo",{ id:id }),"ok");
+    CR.addLog({ ent:"products", id:id, w:"↶ "+CR.t("cv.btn"), a:"#"+id, b:"", ok:true, u:true });
+    CR.convAfter();
+  }).catch(function(e){ MG.toast((e&&e.message)||"error","err"); });
+};
+
 CR.paintFbar=function(){
   var h=el("crFbar"); if(!h) return;
   var E=CR.E[CR.ent], S=CR.st(CR.ent);
@@ -10193,6 +10325,7 @@ CR.paintFbar=function(){
     +E.fbar(S.f)
     +'<button class="cr-link" data-act="freset" type="button"'+(CR.hasF(S)?'':' hidden')+'>'+esc(CR.t("reset"))+'</button>'
     +'<span class="cr-sp"></span>'
+    +(E.tool?E.tool():"")
     +'<button class="mg-btn sm" data-act="csv" type="button">⬇ '+esc(CR.t("csv"))+'</button>'
     +'<button class="mg-btn sm" data-act="reload" type="button" title="'+esc(CR.t("reload"))+'" aria-label="'+esc(CR.t("reload"))+'">↻</button>';
 };
@@ -10493,6 +10626,7 @@ CR.onClick=function(e){
     if(act==="ent"){ CR.show(v); return; }
     if(act==="lang"){ CR.setLang(v); return; }
     if(act==="undo"){ CR.doUndo(); return; }
+    if(act==="conv"){ CR.convert(v); return; }
     if(act==="log"){ CR.showLog=!CR.showLog; CR.paintHead(); CR.paintLog(); return; }
     if(act==="reload"){ CR.sub={}; CR.load(ent,true); return; }
     if(act==="csv"){ CR.csv(); return; }
